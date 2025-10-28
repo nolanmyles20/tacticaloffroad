@@ -66,7 +66,7 @@
     "basePrice": 79,
     "platforms": ["AR-15"],
     "tags": ["Flash Suppressors","Thread Adapters","Crush Washers"],
-    "image": "https://picsum.photos/seed/ar15-flash/800/600",
+    "image": "assets/coming-soon.svg",
     "variant_ids": {
       "Armor": { "1mm": "VARIANT_ID_FA_1", "2mm": "VARIANT_ID_FA_2", "3mm": "VARIANT_ID_FA_3" },
       "Stainless": { "1mm": "VARIANT_ID_FS_1", "2mm": "VARIANT_ID_FS_2", "3mm": "VARIANT_ID_FS_3" }
