@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs>
+    <pattern id="hazard" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="40" height="40" fill="#f6c314"/>
+      <rect x="0" y="0" width="20" height="40" fill="#111111"/>
+    </pattern>
+    <style>
+      @font-face{font-family:'Black Ops One Local';src:url('/assets/fonts/BlackOpsOne-Regular.woff2') format('woff2'),url('/assets/fonts/BlackOpsOne-Regular.woff') format('woff');}
+      text{font-family:'Black Ops One Local', sans-serif;letter-spacing:8px;fill:#0b0b0b}
+    </style>
+  </defs>
+  <rect width="1200" height="800" fill="#f6c314"/>
+  <rect x="0" y="0" width="1200" height="140" fill="url(#hazard)"/>
+  <rect x="0" y="660" width="1200" height="140" fill="url(#hazard)"/>
+  <text x="600" y="390" font-size="140" text-anchor="middle">COMING</text>
+  <text x="600" y="540" font-size="140" text-anchor="middle">SOON</text>
+</svg>
