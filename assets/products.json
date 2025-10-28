@@ -82,7 +82,7 @@
     "basePrice": 185,
     "platforms": ["Humvee"],
     "tags": ["Stainless","Armor"],
-    "image": "assets/coming-soon.svg",
+    "image": "assets/IMG_4479.jpeg",
     "option_labels": { "first": "Item material", "second": "Color", "third": "Thickness" },
     "variant_ids": {
       "Stainless steel": {
