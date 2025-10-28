@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 async function loadProducts(){
-  const res = await fetch('/assets/products.json'); if(!res.ok) return;
+  const res = await fetch('assets/products.json'); if(!res.ok) return;
   const items = await res.json();
 
   // Category grids
