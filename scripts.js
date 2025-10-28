@@ -1,5 +1,5 @@
 
-const SHOPIFY = { shop:'YOUR-SHOP.myshopify.com' }; // <-- change me
+const SHOPIFY = { shop:'tacticaloffroad.myshopify.com' }; // <-- change me
 
 document.addEventListener('DOMContentLoaded',()=>{
   const c=document.getElementById('cart-link');
