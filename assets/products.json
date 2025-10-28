@@ -4,26 +4,12 @@
     "title": "HD FRONT BUMPER",
     "desc": "HEAVY-DUTY FRONT BUMPER WITH D-RING TABS AND WINCH MOUNT.",
     "basePrice": 899,
-    "platforms": [
-      "Humvee",
-      "Jeep"
-    ],
-    "tags": [
-      "Armor",
-      "Stainless"
-    ],
+    "platforms": ["Humvee","Jeep"],
+    "tags": ["Armor","Stainless"],
     "image": "https://picsum.photos/seed/hmmwv-bumper/800/600",
     "variant_ids": {
-      "Armor": {
-        "1mm": "VARIANT_ID_A_1",
-        "2mm": "VARIANT_ID_A_2",
-        "3mm": "VARIANT_ID_A_3"
-      },
-      "Stainless": {
-        "1mm": "VARIANT_ID_S_1",
-        "2mm": "VARIANT_ID_S_2",
-        "3mm": "VARIANT_ID_S_3"
-      }
+      "Armor": { "1mm": "VARIANT_ID_A_1", "2mm": "VARIANT_ID_A_2", "3mm": "VARIANT_ID_A_3" },
+      "Stainless": { "1mm": "VARIANT_ID_S_1", "2mm": "VARIANT_ID_S_2", "3mm": "VARIANT_ID_S_3" }
     },
     "powdercoat_variant_id": "POWDERCOAT_BLACK_TEXTURED",
     "powdercoat_price": 50
@@ -33,25 +19,12 @@
     "title": "JK FRONT TRACK BAR",
     "desc": "ADJUSTABLE FRONT TRACK BAR FOR JEEP JK.",
     "basePrice": 169,
-    "platforms": [
-      "Jeep"
-    ],
-    "tags": [
-      "Armor",
-      "Stainless"
-    ],
+    "platforms": ["Jeep"],
+    "tags": ["Armor","Stainless"],
     "image": "https://picsum.photos/seed/jeep-trackbar/800/600",
     "variant_ids": {
-      "Armor": {
-        "1mm": "VARIANT_ID_JA_1",
-        "2mm": "VARIANT_ID_JA_2",
-        "3mm": "VARIANT_ID_JA_3"
-      },
-      "Stainless": {
-        "1mm": "VARIANT_ID_JS_1",
-        "2mm": "VARIANT_ID_JS_2",
-        "3mm": "VARIANT_ID_JS_3"
-      }
+      "Armor": { "1mm": "VARIANT_ID_JA_1", "2mm": "VARIANT_ID_JA_2", "3mm": "VARIANT_ID_JA_3" },
+      "Stainless": { "1mm": "VARIANT_ID_JS_1", "2mm": "VARIANT_ID_JS_2", "3mm": "VARIANT_ID_JS_3" }
     },
     "powdercoat_variant_id": "POWDERCOAT_BLACK_TEXTURED",
     "powdercoat_price": 50
@@ -61,26 +34,12 @@
     "title": "ROOF REINFORCEMENT KIT",
     "desc": "STIFFENS HUMVEE ROOF STRUCTURE; BOLT-ON.",
     "basePrice": 1499,
-    "platforms": [
-      "Humvee"
-    ],
-    "tags": [
-      "Roof",
-      "Armor",
-      "Stainless"
-    ],
+    "platforms": ["Humvee"],
+    "tags": ["Roof","Armor","Stainless"],
     "image": "https://picsum.photos/seed/hmmwv-roof/800/600",
     "variant_ids": {
-      "Armor": {
-        "1mm": "VARIANT_ID_RA_1",
-        "2mm": "VARIANT_ID_RA_2",
-        "3mm": "VARIANT_ID_RA_3"
-      },
-      "Stainless": {
-        "1mm": "VARIANT_ID_RS_1",
-        "2mm": "VARIANT_ID_RS_2",
-        "3mm": "VARIANT_ID_RS_3"
-      }
+      "Armor": { "1mm": "VARIANT_ID_RA_1", "2mm": "VARIANT_ID_RA_2", "3mm": "VARIANT_ID_RA_3" },
+      "Stainless": { "1mm": "VARIANT_ID_RS_1", "2mm": "VARIANT_ID_RS_2", "3mm": "VARIANT_ID_RS_3" }
     },
     "powdercoat_variant_id": "POWDERCOAT_BLACK_TEXTURED",
     "powdercoat_price": 50
@@ -90,25 +49,12 @@
     "title": "REAR CURTAIN ASSEMBLY",
     "desc": "REPLACEMENT VINYL REAR CURTAIN WITH WINDOW.",
     "basePrice": 399,
-    "platforms": [
-      "Humvee"
-    ],
-    "tags": [
-      "Rear Curtain",
-      "Windows"
-    ],
+    "platforms": ["Humvee"],
+    "tags": ["Rear Curtain","Windows"],
     "image": "https://picsum.photos/seed/hmmwv-curtain/800/600",
     "variant_ids": {
-      "Armor": {
-        "1mm": "VARIANT_ID_CA_1",
-        "2mm": "VARIANT_ID_CA_2",
-        "3mm": "VARIANT_ID_CA_3"
-      },
-      "Stainless": {
-        "1mm": "VARIANT_ID_CS_1",
-        "2mm": "VARIANT_ID_CS_2",
-        "3mm": "VARIANT_ID_CS_3"
-      }
+      "Armor": { "1mm": "VARIANT_ID_CA_1", "2mm": "VARIANT_ID_CA_2", "3mm": "VARIANT_ID_CA_3" },
+      "Stainless": { "1mm": "VARIANT_ID_CS_1", "2mm": "VARIANT_ID_CS_2", "3mm": "VARIANT_ID_CS_3" }
     },
     "powdercoat_variant_id": "POWDERCOAT_BLACK_TEXTURED",
     "powdercoat_price": 50
@@ -118,45 +64,51 @@
     "title": "FLASH SUPPRESSOR",
     "desc": "AR-15 FLASH SUPPRESSOR, 1/2-28 THREAD.",
     "basePrice": 79,
-    "platforms": [
-      "AR-15"
-    ],
-    "tags": [
-      "Flash Suppressors",
-      "Thread Adapters",
-      "Crush Washers"
-    ],
+    "platforms": ["AR-15"],
+    "tags": ["Flash Suppressors","Thread Adapters","Crush Washers"],
     "image": "https://picsum.photos/seed/ar15-flash/800/600",
     "variant_ids": {
-      "Armor": {
-        "1mm": "VARIANT_ID_FA_1",
-        "2mm": "VARIANT_ID_FA_2",
-        "3mm": "VARIANT_ID_FA_3"
-      },
-      "Stainless": {
-        "1mm": "VARIANT_ID_FS_1",
-        "2mm": "VARIANT_ID_FS_2",
-        "3mm": "VARIANT_ID_FS_3"
-      }
+      "Armor": { "1mm": "VARIANT_ID_FA_1", "2mm": "VARIANT_ID_FA_2", "3mm": "VARIANT_ID_FA_3" },
+      "Stainless": { "1mm": "VARIANT_ID_FS_1", "2mm": "VARIANT_ID_FS_2", "3mm": "VARIANT_ID_FS_3" }
     },
     "powdercoat_variant_id": "POWDERCOAT_BLACK_TEXTURED",
     "powdercoat_price": 50
   },
+
+  {
+    "id": "humvee-rear-insert",
+    "title": "HUMVEE REAR INSERT",
+    "desc": "Humvee rear insert made from 304 Stainless Steel or Aluminum. Different surface finishes and thicknesses.",
+    "basePrice": 185,
+    "platforms": ["Humvee"],
+    "tags": ["Stainless","Armor"],
+    "image": "assets/coming-soon.svg",
+    "option_labels": { "first": "Item material", "second": "Color", "third": "Thickness" },
+    "variant_ids": {
+      "Stainless steel": {
+        "Black":  { "1mm/.04”": "47465968894107", "2mm/.08”": "47466418405531", "3mm/.12”": "47466418438299" },
+        "Silver": { "1mm/.04”": "47465968926875", "2mm/.08”": "47466418536603", "3mm/.12”": "47466418569371" }
+      },
+      "Aluminum": {
+        "Black":  { "1mm/.04”": "47465973153947", "2mm/.08”": "47466418471067", "3mm/.12”": "47466418503835" },
+        "Silver": { "1mm/.04”": "47465973186715", "2mm/.08”": "47466418602139", "3mm/.12”": "47466418634907" }
+      }
+    },
+    "powdercoat_variant_id": "",
+    "powdercoat_price": 50
+  },
+
   {
     "id": "crosskart-chassis",
     "title": "CROSS-KART CHASSIS KIT",
     "desc": "HIGH-PERFORMANCE CROSS-KART PLATFORM. COMING SOON.",
     "basePrice": 0,
-    "platforms": [
-      "Cross-Karts"
-    ],
+    "platforms": ["Cross-Karts"],
     "tags": [],
-    "image": "/assets/coming-soon.svg",
+    "image": "assets/coming-soon.svg",
     "simple": true,
     "variant_ids": {
-      "Solo": {
-        "Default": "VARIANT_ID_CK_SOLO"
-      }
+      "Solo": { "Default": "VARIANT_ID_CK_SOLO" }
     }
   }
 ]
