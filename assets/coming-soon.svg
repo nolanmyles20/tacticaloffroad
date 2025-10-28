@@ -1,29 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
   <defs>
     <style>
       @font-face {
         font-family: 'Black Ops One Local';
-        src: url("data:font/woff2;base64,d09GMgABAAAAANkUABEAAAACgVgAANivAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAA...gZVY2z3RsBeDM2mbB5tW1EuHPU+Yy7QLr/Qsem8oVemmxpcS/DmGcntCDSsr76V") format('woff2');
+        src: url("data:font/woff2;base64,d09GMgABAAAAA...<snip>...") format('woff2');
         font-weight: 400;
         font-style: normal;
         font-display: swap;
       }
       text {
         font-family: 'Black Ops One Local', sans-serif;
-        letter-spacing: 8px;
+        letter-spacing: 2.5px;
         fill: #0b0b0b;
       }
     </style>
 
-    <pattern id="hazard" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <rect width="40" height="40" fill="#f6c314"/>
-      <rect x="0" y="0" width="20" height="40" fill="#111111"/>
+    <!-- Hazard stripe pattern (diagonal) -->
+    <pattern id="hazard" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="20" height="20" fill="#f6c314"/>
+      <rect x="0" y="0" width="10" height="20" fill="#111111"/>
     </pattern>
   </defs>
 
-  <rect width="1200" height="800" fill="#f6c314"/>
-  <rect x="0" y="0" width="1200" height="140" fill="url(#hazard)"/>
-  <rect x="0" y="660" width="1200" height="140" fill="url(#hazard)"/>
-  <text x="600" y="390" font-size="140" text-anchor="middle">COMING</text>
-  <text x="600" y="540" font-size="140" text-anchor="middle">SOON</text>
+  <!-- Background -->
+  <rect width="400" height="300" fill="#f6c314"/>
+
+  <!-- Hazard stripes top/bottom: 15% height each -->
+  <rect x="0" y="0" width="400" height="45" fill="url(#hazard)"/>
+  <rect x="0" y="255" width="400" height="45" fill="url(#hazard)"/>
+
+  <!-- Text block -->
+  <g text-anchor="middle">
+    <text x="200" y="155" font-size="54">COMING</text>
+    <text x="200" y="210" font-size="54">SOON</text>
+  </g>
 </svg>
