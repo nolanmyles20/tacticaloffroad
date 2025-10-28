@@ -1,44 +1,64 @@
+// ================ CONFIG =================
+const SHOPIFY = { shop: 'shop.tacticaloffroad.store' }; // use myshopify domain until shop. subdomain has SSL
 
-const SHOPIFY = { shop:'tacticaloffroad.myshopify.com' }; // <-- change me
+// ================ BOOT ===================
+document.addEventListener('DOMContentLoaded', () => {
+  // Wire any cart link(s)
+  const cartTargets = [
+    ...document.querySelectorAll('[data-cart-link]'),
+    ...document.querySelectorAll('#cart-link')
+  ];
+  cartTargets.forEach(el => {
+    el.setAttribute('href', `https://${SHOPIFY.shop}/cart`);
+    el.addEventListener('click', (e) => {
+      // allow default <a href> navigation, but if it's a button/div, navigate manually
+      if (el.tagName !== 'A') {
+        e.preventDefault();
+        window.location.href = `https://${SHOPIFY.shop}/cart`;
+      }
+    });
+  });
 
-document.addEventListener('DOMContentLoaded',()=>{
-  const c=document.getElementById('cart-link');
-  if(c) c.href=`https://${SHOPIFY.shop}/cart`;
-  initFilters();
-  loadProducts();
+  try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
+  loadProducts().catch(err => console.error('loadProducts failed', err));
 });
 
-async function loadProducts(){
-  const res = await fetch('assets/products.json'); if(!res.ok) return;
+// ================ DATA LOAD ==============
+async function loadProducts() {
+  const res = await fetch('assets/products.json', { cache: 'no-store' });
+  if (!res.ok) {
+    console.error('products.json fetch failed:', res.status, res.statusText);
+    return;
+  }
   const items = await res.json();
 
   // Category grids
   const grids = document.querySelectorAll('#product-grid');
-  grids.forEach(grid=>{
+  grids.forEach(grid => {
     const cat = grid.getAttribute('data-category');
     const activeTags = getActiveTags();
-    const subset = items.filter(p=>p.platforms.includes(cat)).filter(p=>{
-      if(activeTags.length===0) return true;
-      return activeTags.every(t=>p.tags.includes(t));
-    });
-    grid.innerHTML = subset.map(p=>productCard(p)).join('') || '<p>No products match those filters.</p>';
+    const subset = items
+      .filter(p => p.platforms.includes(cat))
+      .filter(p => activeTags.length === 0 || activeTags.every(t => p.tags.includes(t)));
+    grid.innerHTML = subset.map(p => productCard(p)).join('') || '<p>No products match those filters.</p>';
   });
 
   // Featured grid (home) — one per platform including Cross-Karts
   const fg = document.getElementById('featured-grid');
-  if(fg){
-    const platforms = ['Humvee','Jeep','AR-15','Cross-Karts'];
-    const picks = platforms.map(pl=>items.find(p=>p.platforms.includes(pl))).filter(Boolean);
-    fg.innerHTML = picks.map(p=>productCard(p)).join('');
+  if (fg) {
+    const platforms = ['Humvee', 'Jeep', 'AR-15', 'Cross-Karts'];
+    const picks = platforms.map(pl => items.find(p => p.platforms.includes(pl))).filter(Boolean);
+    fg.innerHTML = picks.map(p => productCard(p)).join('');
   }
 
   // Wire dynamic selects + buttons after render
   wireCards(items);
 }
 
-function productCard(p){
-  // Simple products (e.g., Cross-Karts "Solo") render different controls
-  if(p.simple){
+// ================ RENDER ================
+function productCard(p) {
+  // Simple product (e.g., Cross-Karts "Solo")
+  if (p.simple) {
     return `
     <div class="card" data-id="${p.id}">
       <img src="${p.image}" alt="${p.title}">
@@ -63,7 +83,7 @@ function productCard(p){
     </div>`;
   }
 
-  // Standard Armor/Stainless products
+  // Standard Armor/Stainless product
   return `
   <div class="card" data-id="${p.id}">
     <img src="${p.image}" alt="${p.title}">
@@ -101,21 +121,23 @@ function productCard(p){
   </div>`;
 }
 
-function wireCards(items){
-  document.querySelectorAll('.card').forEach(card=>{
+// ================ WIRING ================
+function wireCards(items) {
+  document.querySelectorAll('.card').forEach(card => {
     const id = card.dataset.id;
-    const product = items.find(x=>x.id===id);
+    const product = items.find(x => x.id === id);
     const btn = card.querySelector('.add');
     const qtyEl = card.querySelector('.qty');
 
     // Simple product behavior
-    if(product.simple){
+    if (product.simple) {
       const varSel = card.querySelector('.simple-variant');
-      btn.addEventListener('click', ()=>{
-        const qty = Math.max(1, parseInt(qtyEl.value||'1',10));
-        const variantId = (product.variant_ids['Solo']||{})[varSel.value];
-        if(!variantId){
-          alert('Missing variant mapping for Simple product.');
+      btn.addEventListener('click', () => {
+        const qty = Math.max(1, parseInt(qtyEl.value || '1', 10));
+        const variantId = (product.variant_ids['Solo'] || {})[varSel.value];
+        if (!variantId) {
+          // Graceful fallback: open cart instead of alerting
+          window.location.href = `https://${SHOPIFY.shop}/cart`;
           return;
         }
         const url = `https://${SHOPIFY.shop}/cart/${variantId}:${qty}?channel=buy_button`;
@@ -129,17 +151,20 @@ function wireCards(items){
     const thickSel = card.querySelector('.thickness');
     const powderEl = card.querySelector('.powder');
 
-    btn.addEventListener('click', ()=>{
+    btn.addEventListener('click', () => {
       const material = matSel.value;
-      const thickness = thickSel.value; // '1mm' etc
-      const qty = Math.max(1, parseInt(qtyEl.value||'1',10));
-      const variantId = (product.variant_ids[material]||{})[thickness];
-      if(!variantId){
-        alert('Missing variant mapping. Update products.json variant_ids.');
+      const thickness = thickSel.value; // '1mm', '2mm', '3mm'
+      const qty = Math.max(1, parseInt(qtyEl.value || '1', 10));
+      const variantId = (product.variant_ids[material] || {})[thickness];
+
+      if (!variantId) {
+        // Graceful fallback: open cart; still usable before variants are wired
+        window.location.href = `https://${SHOPIFY.shop}/cart`;
         return;
       }
+
       let cartParts = [`${variantId}:${qty}`];
-      if(powderEl && powderEl.checked && product.powdercoat_variant_id){
+      if (powderEl && powderEl.checked && product.powdercoat_variant_id) {
         cartParts.push(`${product.powdercoat_variant_id}:1`);
       }
       const url = `https://${SHOPIFY.shop}/cart/${cartParts.join(',')}?channel=buy_button`;
@@ -148,10 +173,10 @@ function wireCards(items){
   });
 }
 
-// Toggle filter logic with URL sync
-function initFilters(){
-  document.querySelectorAll('.toggle').forEach(t=>{
-    t.addEventListener('click',()=>{
+// ================ FILTERS ================
+function initFilters() {
+  document.querySelectorAll('.toggle').forEach(t => {
+    t.addEventListener('click', () => {
       t.classList.toggle('active');
       updateUrlFromFilters();
       loadProducts();
@@ -159,19 +184,19 @@ function initFilters(){
   });
   const params = new URLSearchParams(window.location.search);
   const tags = params.getAll('tag');
-  if(tags.length){
-    document.querySelectorAll('.toggle').forEach(t=>{
-      if(tags.includes(t.dataset.tag)) t.classList.add('active');
+  if (tags.length) {
+    document.querySelectorAll('.toggle').forEach(t => {
+      if (tags.includes(t.dataset.tag)) t.classList.add('active');
     });
   }
 }
-function getActiveTags(){
-  return Array.from(document.querySelectorAll('.toggle.active')).map(el=>el.dataset.tag);
+function getActiveTags() {
+  return Array.from(document.querySelectorAll('.toggle.active')).map(el => el.dataset.tag);
 }
-function updateUrlFromFilters(){
+function updateUrlFromFilters() {
   const tags = getActiveTags();
   const params = new URLSearchParams();
-  tags.forEach(t=>params.append('tag',t));
-  const newUrl = window.location.pathname + (tags.length?('?'+params.toString()):'');
-  history.replaceState({},'',newUrl);
+  tags.forEach(t => params.append('tag', t));
+  const newUrl = window.location.pathname + (tags.length ? ('?' + params.toString()) : '');
+  history.replaceState({}, '', newUrl);
 }
