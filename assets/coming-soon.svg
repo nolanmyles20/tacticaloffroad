@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
   <defs>
     <style>
-      @font-face{
-        font-family:'Black Ops One Local';
-        src:url('./fonts/BlackOpsOne-Regular.woff2') format('woff2'),
-            url('./fonts/BlackOpsOne-Regular.woff') format('woff');
-        font-weight:400;font-style:normal;font-display:swap;
-      }
-      text{font-family:'Black Ops One Local', sans-serif;letter-spacing:8px;fill:#0b0b0b}
-    </style>
+     @font-face{
+      font-family:'Black Ops One Local';
+      src:url('./fonts/BlackOpsOne-Regular.woff2') format('woff2'),
+          url('./fonts/BlackOpsOne-Regular.woff') format('woff');
+      font-weight:400;font-style:normal;font-display:swap;
+    }
+    text{font-family:'Black Ops One Local', sans-serif;letter-spacing:8px;fill:#0b0b0b}
+  </style>
     <pattern id="hazard" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
       <rect width="40" height="40" fill="#f6c314"/>
       <rect x="0" y="0" width="20" height="40" fill="#111111"/>
