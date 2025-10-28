@@ -17,6 +17,8 @@
   font-style:normal;
   font-display:swap;
 }
+html,body{ font-family:'Black Ops One Local', sans-serif; }
+
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:'Black Ops One Local', sans-serif;text-transform:uppercase;letter-spacing:1px}
 img{max-width:100%;display:block}
