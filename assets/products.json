@@ -6,7 +6,7 @@
     "basePrice": 899,
     "platforms": ["Humvee","Jeep"],
     "tags": ["Armor","Stainless"],
-    "image": "https://picsum.photos/seed/hmmwv-bumper/800/600",
+    "image": "assets/coming-soon.svg",
     "variant_ids": {
       "Armor": { "1mm": "VARIANT_ID_A_1", "2mm": "VARIANT_ID_A_2", "3mm": "VARIANT_ID_A_3" },
       "Stainless": { "1mm": "VARIANT_ID_S_1", "2mm": "VARIANT_ID_S_2", "3mm": "VARIANT_ID_S_3" }
