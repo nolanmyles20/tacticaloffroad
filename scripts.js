@@ -1,5 +1,5 @@
 // ================ CONFIG =================
-const SHOPIFY = { shop: 'shop.tacticaloffroad.store' }; // use myshopify domain until shop. subdomain has SSL
+const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // use myshopify domain until shop. subdomain has SSL
 
 // ================ BOOT ===================
 document.addEventListener('DOMContentLoaded', () => {
