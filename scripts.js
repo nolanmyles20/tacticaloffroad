@@ -1,5 +1,5 @@
 // ================ CONFIG =================
-const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // use myshopify domain until shop. subdomain has SSL
+const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // switch to 'shop.tacticaloffroad.store' once SSL is live
 
 // ================ BOOT ===================
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,13 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
   cartTargets.forEach(el => {
     el.setAttribute('href', `https://${SHOPIFY.shop}/cart`);
-    el.addEventListener('click', (e) => {
-      // allow default <a href> navigation, but if it's a button/div, navigate manually
-      if (el.tagName !== 'A') {
+    if (el.tagName !== 'A') {
+      el.addEventListener('click', (e) => {
         e.preventDefault();
         window.location.href = `https://${SHOPIFY.shop}/cart`;
-      }
-    });
+      });
+    }
   });
 
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
@@ -26,15 +25,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // ================ DATA LOAD ==============
 async function loadProducts() {
   const res = await fetch('assets/products.json', { cache: 'no-store' });
-  if (!res.ok) {
-    console.error('products.json fetch failed:', res.status, res.statusText);
-    return;
-  }
+  if (!res.ok) { console.error('products.json fetch failed:', res.status, res.statusText); return; }
   const items = await res.json();
 
   // Category grids
-  const grids = document.querySelectorAll('#product-grid');
-  grids.forEach(grid => {
+  document.querySelectorAll('#product-grid').forEach(grid => {
     const cat = grid.getAttribute('data-category');
     const activeTags = getActiveTags();
     const subset = items
@@ -43,7 +38,7 @@ async function loadProducts() {
     grid.innerHTML = subset.map(p => productCard(p)).join('') || '<p>No products match those filters.</p>';
   });
 
-  // Featured grid (home) — one per platform including Cross-Karts
+  // Featured grid (home)
   const fg = document.getElementById('featured-grid');
   if (fg) {
     const platforms = ['Humvee', 'Jeep', 'AR-15', 'Cross-Karts'];
@@ -51,13 +46,12 @@ async function loadProducts() {
     fg.innerHTML = picks.map(p => productCard(p)).join('');
   }
 
-  // Wire dynamic selects + buttons after render
+  // Wire events
   wireCards(items);
 }
 
 // ================ RENDER ================
-function productCard(p) {
-  // Simple product (e.g., Cross-Karts "Solo")
+function productCard(p){
   if (p.simple) {
     return `
     <div class="card" data-id="${p.id}">
@@ -69,9 +63,7 @@ function productCard(p) {
         <div class="controls">
           <div>
             <label>Variant</label>
-            <select class="select simple-variant">
-              <option value="Default">Solo</option>
-            </select>
+            <select class="select simple-variant"><option value="Default">Solo</option></select>
           </div>
           <div>
             <label>Qty</label>
@@ -83,7 +75,15 @@ function productCard(p) {
     </div>`;
   }
 
-  // Standard Armor/Stainless product
+  const labels = p.option_labels || {};
+  const vmap = p.variant_ids || {};
+  const opt1Vals = Object.keys(vmap);
+  const o1 = opt1Vals[0] || '';
+  const opt2Vals = o1 ? Object.keys(vmap[o1] || {}) : [];
+  const o2 = opt2Vals[0] || '';
+  const opt3Vals = (o1 && o2 && vmap[o1][o2] && typeof vmap[o1][o2] === 'object')
+    ? Object.keys(vmap[o1][o2]) : [];
+
   return `
   <div class="card" data-id="${p.id}">
     <img src="${p.image}" alt="${p.title}">
@@ -93,27 +93,24 @@ function productCard(p) {
       <p>${p.desc}</p>
       <p class="price">$${p.basePrice}</p>
       <div class="controls">
-        <div>
-          <label>Material</label>
-          <select class="select material">
-            <option value="Armor">Armor</option>
-            <option value="Stainless">Stainless</option>
-          </select>
+        <div ${opt1Vals.length<=1 ? 'style="display:none"' : ''}>
+          <label>${labels.first || 'Option 1'}</label>
+          <select class="select opt1">${opt1Vals.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
         </div>
-        <div>
-          <label>Thickness</label>
-          <select class="select thickness">
-            <option>1mm</option>
-            <option>2mm</option>
-            <option>3mm</option>
-          </select>
+        <div ${opt2Vals.length<=1 ? 'style="display:none"' : ''}>
+          <label>${labels.second || 'Option 2'}</label>
+          <select class="select opt2">${opt2Vals.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
+        </div>
+        <div ${opt3Vals.length<=1 ? 'style="display:none"' : ''}>
+          <label>${labels.third || 'Option 3'}</label>
+          <select class="select opt3">${opt3Vals.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
         </div>
         <div>
           <label>Qty</label>
           <input type="number" class="qty" min="1" value="1"/>
         </div>
-        <label class="checkbox">
-          <input type="checkbox" class="powder"/> Powdercoat Black +$50
+        <label class="checkbox" ${p.powdercoat_variant_id ? '' : 'style="display:none"'}>
+          <input type="checkbox" class="powder"/> Powdercoat Black +$${p.powdercoat_price||50}
         </label>
       </div>
       <button class="btn add">ADD TO CART</button>
@@ -122,61 +119,82 @@ function productCard(p) {
 }
 
 // ================ WIRING ================
-function wireCards(items) {
-  document.querySelectorAll('.card').forEach(card => {
-    const id = card.dataset.id;
-    const product = items.find(x => x.id === id);
+function wireCards(items){
+  document.querySelectorAll('.card').forEach(card=>{
+    const product = items.find(x=>x.id === card.dataset.id);
     const btn = card.querySelector('.add');
     const qtyEl = card.querySelector('.qty');
+    const powderEl = card.querySelector('.powder');
 
-    // Simple product behavior
     if (product.simple) {
       const varSel = card.querySelector('.simple-variant');
-      btn.addEventListener('click', () => {
-        const qty = Math.max(1, parseInt(qtyEl.value || '1', 10));
-        const variantId = (product.variant_ids['Solo'] || {})[varSel.value];
-        if (!variantId) {
-          // Graceful fallback: open cart instead of alerting
-          window.location.href = `https://${SHOPIFY.shop}/cart`;
-          return;
-        }
-        const url = `https://${SHOPIFY.shop}/cart/${variantId}:${qty}?channel=buy_button`;
-        window.location.href = url;
+      btn.addEventListener('click', ()=>{
+        const qty = Math.max(1, parseInt(qtyEl?.value || '1', 10));
+        const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
+        window.location.href = variantId
+          ? `https://${SHOPIFY.shop}/cart/${variantId}:${qty}?channel=buy_button`
+          : `https://${SHOPIFY.shop}/cart`;
       });
       return;
     }
 
-    // Standard product behavior
-    const matSel = card.querySelector('.material');
-    const thickSel = card.querySelector('.thickness');
-    const powderEl = card.querySelector('.powder');
+    const vmap = product.variant_ids || {};
+    const opt1 = card.querySelector('.opt1');
+    const opt2 = card.querySelector('.opt2');
+    const opt3 = card.querySelector('.opt3');
 
-    btn.addEventListener('click', () => {
-      const material = matSel.value;
-      const thickness = thickSel.value; // '1mm', '2mm', '3mm'
-      const qty = Math.max(1, parseInt(qtyEl.value || '1', 10));
-      const variantId = (product.variant_ids[material] || {})[thickness];
+    // keep selects in sync
+    opt1?.addEventListener('change', ()=>{
+      const o1 = opt1.value;
+      const o2Vals = Object.keys(vmap[o1] || {});
+      if (opt2) opt2.innerHTML = o2Vals.map(v=>`<option value="${v}">${v}</option>`).join('');
+      const o2 = opt2 ? opt2.value : o2Vals[0];
+      const o3Vals = (vmap[o1] && vmap[o1][o2] && typeof vmap[o1][o2] === 'object')
+        ? Object.keys(vmap[o1][o2]) : [];
+      if (opt3) opt3.innerHTML = o3Vals.map(v=>`<option value="${v}">${v}</option>`).join('');
+    });
+
+    opt2?.addEventListener('change', ()=>{
+      const o1 = opt1 ? opt1.value : Object.keys(vmap)[0];
+      const o2 = opt2.value;
+      const o3Vals = (vmap[o1] && vmap[o1][o2] && typeof vmap[o1][o2] === 'object')
+        ? Object.keys(vmap[o1][o2]) : [];
+      if (opt3) opt3.innerHTML = o3Vals.map(v=>`<option value="${v}">${v}</option>`).join('');
+    });
+
+    btn.addEventListener('click', ()=>{
+      const o1 = opt1 ? opt1.value : Object.keys(vmap)[0];                    // first option
+      const o2 = opt2 ? opt2.value : (vmap[o1] ? Object.keys(vmap[o1])[0] : ''); // second option
+      const node = vmap[o1]?.[o2];
+      const o3 = opt3 ? opt3.value : (node && typeof node === 'object' ? Object.keys(node)[0] : '');
+      const qty = Math.max(1, parseInt(qtyEl?.value || '1', 10));
+
+      let variantId = null;
+      if (typeof node === 'object') {
+        variantId = node?.[o3] || null;     // 3-level map
+      } else {
+        variantId = vmap[o1]?.[o2] || null; // 2-level map
+      }
 
       if (!variantId) {
-        // Graceful fallback: open cart; still usable before variants are wired
+        console.warn('No variant mapping', { id: product.id, o1, o2, o3, vmap });
         window.location.href = `https://${SHOPIFY.shop}/cart`;
         return;
       }
 
-      let cartParts = [`${variantId}:${qty}`];
+      const parts = [`${variantId}:${qty}`];
       if (powderEl && powderEl.checked && product.powdercoat_variant_id) {
-        cartParts.push(`${product.powdercoat_variant_id}:1`);
+        parts.push(`${product.powdercoat_variant_id}:1`);
       }
-      const url = `https://${SHOPIFY.shop}/cart/${cartParts.join(',')}?channel=buy_button`;
-      window.location.href = url;
+      window.location.href = `https://${SHOPIFY.shop}/cart/${parts.join(',')}?channel=buy_button`;
     });
   });
 }
 
 // ================ FILTERS ================
-function initFilters() {
-  document.querySelectorAll('.toggle').forEach(t => {
-    t.addEventListener('click', () => {
+function initFilters(){
+  document.querySelectorAll('.toggle').forEach(t=>{
+    t.addEventListener('click',()=>{
       t.classList.toggle('active');
       updateUrlFromFilters();
       loadProducts();
@@ -184,19 +202,19 @@ function initFilters() {
   });
   const params = new URLSearchParams(window.location.search);
   const tags = params.getAll('tag');
-  if (tags.length) {
-    document.querySelectorAll('.toggle').forEach(t => {
-      if (tags.includes(t.dataset.tag)) t.classList.add('active');
+  if(tags.length){
+    document.querySelectorAll('.toggle').forEach(t=>{
+      if(tags.includes(t.dataset.tag)) t.classList.add('active');
     });
   }
 }
-function getActiveTags() {
-  return Array.from(document.querySelectorAll('.toggle.active')).map(el => el.dataset.tag);
+function getActiveTags(){
+  return Array.from(document.querySelectorAll('.toggle.active')).map(el=>el.dataset.tag);
 }
-function updateUrlFromFilters() {
+function updateUrlFromFilters(){
   const tags = getActiveTags();
   const params = new URLSearchParams();
-  tags.forEach(t => params.append('tag', t));
-  const newUrl = window.location.pathname + (tags.length ? ('?' + params.toString()) : '');
-  history.replaceState({}, '', newUrl);
+  tags.forEach(t=>params.append('tag',t));
+  const newUrl = window.location.pathname + (tags.length?('?'+params.toString()):'');
+  history.replaceState({},'',newUrl);
 }
