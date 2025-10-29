@@ -88,9 +88,13 @@ header nav a {
   min-width: 20px;
   text-align: center;
 }
-.nav {
-  background-image: url("assets/diamond-plate.png"); /* <-- your file path */
-  background-size: cover;      /* scale to fill */
-  background-position: center; /* center the image */
+body {
+  background-image: url("assets/bg.jpg"); /* your path */
+  background-size: cover;
+  background-position: center;
   background-repeat: no-repeat;
 }
+body {
+  background-attachment: scroll;
+}
+
