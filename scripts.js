@@ -263,3 +263,13 @@ function updateUrlFromFilters(){
   const newUrl = window.location.pathname + (tags.length?('?'+params.toString()):'');
   history.replaceState({},'',newUrl);
 }
+document.addEventListener('DOMContentLoaded', () => {
+  const toggle = document.querySelector('.nav-toggle');
+  const menu = document.getElementById('main-menu');
+  if (!toggle || !menu) return;
+
+  toggle.addEventListener('click', () => {
+    const open = menu.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+});
