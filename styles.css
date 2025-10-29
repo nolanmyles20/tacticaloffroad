@@ -30,6 +30,9 @@ a{color:inherit;text-decoration:none}
 .logo-link{display:flex; align-items:center; margin-right:auto;}
 .logo{height:36px; width:auto; display:block;}
 
+/* Desktop inline links (original) */
+.links{display:flex; gap:8px; flex-wrap:wrap;}
+
 .nav-cart{display:flex; align-items:center; gap:8px; font-weight:700;}
 .cart-icon{width:20px; height:20px; display:inline-block; filter:brightness(0); transition:transform .2s;}
 .nav-cart:hover .cart-icon{transform:scale(1.1);}
@@ -82,26 +85,34 @@ body{
 .nav-toggle:focus{outline:2px solid #000; outline-offset:2px;}
 .sr-only{position:absolute; left:-9999px;}
 
-/* --- Collapsible menu panel --- */
+/* --- Collapsible mobile menu panel --- */
+/* Hidden by default; only used on mobile */
 .menu{
-  display:flex; flex-wrap:wrap; gap:10px;
-  padding:10px 18px 16px; background:#e1e2e4; border-bottom:1px solid var(--border);
-  max-height:none; overflow:visible; transition:max-height .25s ease;
+  display:none;
+  padding:10px 18px 16px;
+  background:#e1e2e4;
+  border-bottom:1px solid var(--border);
+  max-height:0; overflow:hidden;
+  transition:max-height .25s ease;
 }
+.menu[hidden]{display:none;} /* keeps it out of a11y tree until opened */
 
-/* Desktop */
+/* Desktop: show original links, hide hamburger & mobile menu */
 @media (min-width:801px){
+  .links{display:flex;}
   .nav-toggle{display:none;}
-  .menu{display:flex; align-items:center; padding:0 18px; border:0; background:transparent; gap:8px;}
+  .menu{display:none;}
 }
 
-/* Mobile */
+/* Mobile: hide original links, show hamburger and slide-down menu */
 @media (max-width:800px){
+  .links{display:none;}
   .nav-toggle{display:inline-flex;}
-  .menu{
-    display:grid; grid-template-columns:1fr;
-    max-height:0; overflow:hidden;
+  .menu{display:block;}                 /* allow the panel to animate open */
+  .menu.is-open{max-height:600px; display:block !important;} /* override [hidden] if present */
+
+  /* Make each tab full-width/tappable */
+  .menu .tab{
+    margin:0; width:100%; text-align:left; padding:10px 14px;
   }
-  .menu.is-open{ max-height:600px; }
-  .menu .tab{ margin:0; width:100%; text-align:left; padding:10px 14px; }
 }
