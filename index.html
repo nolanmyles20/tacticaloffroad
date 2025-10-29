@@ -5,31 +5,41 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TACTICAL OFFROAD — HOME</title>
 <link rel="icon" type="image/png" href="assets/favicon_white.png">
-
 <link rel="stylesheet" href="styles.css">
 <script defer src="scripts.js"></script>
-</head><body>
+</head>
+
+<body>
 <nav class="nav">
   <a href="/" class="logo-link">
     <img src="assets/logo.svg" alt="TACTICAL OFFROAD" class="logo">
   </a>
 
-  <!-- Mobile toggle -->
+  <!-- DESKTOP links (shown on >=801px; hidden on mobile via CSS) -->
+  <div class="links">
+    <a class="tab nav-tab" href="/">HOME</a>
+    <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
+    <a class="tab nav-tab" href="/jeep.html">JEEP</a>
+    <a class="tab nav-tab" href="/ar15.html">AR-15</a>
+    <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
+    <a class="tab nav-tab" href="/contact.html">CONTACT</a>
+  </div>
+
+  <!-- Mobile toggle (hidden on desktop via CSS) -->
   <button class="nav-toggle" aria-expanded="false" aria-controls="main-menu">
-    <!-- simple hamburger -->
     <span class="bar"></span><span class="bar"></span><span class="bar"></span>
     <span class="sr-only">Menu</span>
   </button>
 
-  <!-- Cart stays visible -->
+  <!-- Cart (always visible) -->
   <a id="cart-link" class="nav-cart" data-cart-link target="_blank" rel="noopener">
     <img src="assets/cart-icon.svg" class="cart-icon" alt="Cart">
     CART <span id="cart-count" class="cart-count">0</span>
   </a>
 </nav>
 
-<!-- Collapsible menu -->
-<div id="main-menu" class="menu">
+<!-- MOBILE-only menu (hidden on desktop via CSS; toggled open with .is-open) -->
+<div id="main-menu" class="menu" hidden>
   <a class="tab nav-tab" href="/">HOME</a>
   <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
   <a class="tab nav-tab" href="/jeep.html">JEEP</a>
@@ -37,7 +47,6 @@
   <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
   <a class="tab nav-tab" href="/contact.html">CONTACT</a>
 </div>
-
 
 <main class="container">
   <section class="hero">
@@ -54,6 +63,5 @@
 <footer class="footer">
   © 2025 TACTICAL OFFROAD — HUMVEE • JEEP • AR-15 • CROSS-KARTS
 </footer>
-
 </body>
 </html>
