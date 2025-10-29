@@ -89,17 +89,12 @@ header nav a {
   text-align: center;
 }
 body {
-  background-image: url("assets/bg.jpg"); /* your path */
+  background-image: url("assets/diamond-plate.jpg"); /* your path */
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 }
 body {
   background-attachment: scroll;
-}
-.card {
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,0.08);
 }
 
