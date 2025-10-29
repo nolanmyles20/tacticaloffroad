@@ -16,26 +16,30 @@
     <img src="assets/logo.svg" alt="TACTICAL OFFROAD" class="logo">
   </a>
 
-  <div class="links">
-    <a class="tab nav-tab" href="/">HOME</a>
-    <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
-    <a class="tab nav-tab" href="/jeep.html">JEEP</a>
-    <a class="tab nav-tab" href="/ar15.html">AR-15</a>
-    <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
-    <a class="tab nav-tab" href="/contact.html">CONTACT</a>
-  </div>
+  <!-- Mobile toggle -->
+  <button class="nav-toggle" aria-expanded="false" aria-controls="main-menu">
+    <!-- simple hamburger -->
+    <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    <span class="sr-only">Menu</span>
+  </button>
 
-  <div style="margin-left:auto; display:flex; align-items:center;">
-    <a id="cart-link"
-       class="tab nav-tab"
-       data-cart-link
-       target="_blank"
-       rel="noopener">
-       <img src="assets/cart-icon.svg" class="cart-icon" alt="Cart" style="width:20px;vertical-align:middle;">
-       &nbsp;CART <span id="cart-count" class="cart-count">0</span>
-    </a>
-  </div>
+  <!-- Cart stays visible -->
+  <a id="cart-link" class="nav-cart" data-cart-link target="_blank" rel="noopener">
+    <img src="assets/cart-icon.svg" class="cart-icon" alt="Cart">
+    CART <span id="cart-count" class="cart-count">0</span>
+  </a>
 </nav>
+
+<!-- Collapsible menu -->
+<div id="main-menu" class="menu">
+  <a class="tab nav-tab" href="/">HOME</a>
+  <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
+  <a class="tab nav-tab" href="/jeep.html">JEEP</a>
+  <a class="tab nav-tab" href="/ar15.html">AR-15</a>
+  <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
+  <a class="tab nav-tab" href="/contact.html">CONTACT</a>
+</div>
+
 
 <main class="container">
   <section class="hero">
