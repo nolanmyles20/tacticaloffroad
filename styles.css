@@ -116,9 +116,18 @@ body {
 }
 @media (max-width: 768px) {
   body {
-    background-size: contain;
+    /* Tile the texture */
+    background-repeat: repeat;
+    background-position: top center;
+
+    /* Set a tile size that looks good on phones.
+       Tweak the first value (width) to taste (e.g., 180px, 220px, 260px). */
+    background-size: 220px auto;
+
+    background-attachment: scroll; /* safer on mobile */
   }
 }
+
 .logo-link {
   display: flex;
   align-items: center;
