@@ -1,84 +1,105 @@
 // ================ CONFIG =================
-const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // fallback to 'tacticaloffroad.myshopify.com' if shop. SSL not ready
-let cartWin = null;                  // single, reusable cart tab
-let localCartCount = Number(localStorage.getItem('localCartCount') || 0);
+const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // change if needed
+let cartWin = null; // single, reusable cart tab
+let localCartCount = Number(localStorage.getItem('localCartCount') ?? 0) || 0;
 
 // ================ BADGE ==================
-function setBadge(n){
+function setBadge(n) {
   const el = document.getElementById('cart-count');
   if (el) el.textContent = String(n);
 }
 setBadge(localCartCount);
 
-// Try to pull the real count from Shopify (works best after the first cart page loads in the tab)
-async function updateCartCount(){
+// Try to pull the real count from Shopify (works best after user has opened cart at least once)
+async function updateCartCount() {
   try {
     const res = await fetch(`https://${SHOPIFY.shop}/cart.js`, {
-      credentials: 'include', cache: 'no-store', mode: 'cors'
+      credentials: 'include',
+      cache: 'no-store',
+      mode: 'cors'
     });
-    if(!res.ok) return;
+    if (!res.ok) return;
     const data = await res.json();
-    localCartCount = data.item_count;
+    localCartCount = Number(data.item_count) || 0;
     localStorage.setItem('localCartCount', String(localCartCount));
     setBadge(localCartCount);
-  } catch(_e){
-    // ignore; fallback stays visible
+  } catch (_e) {
+    // cross-origin or first-visit will often fail; keep optimistic count
   }
 }
 
-// Open/reuse the cart tab
-function openCartTab(url = `https://${SHOPIFY.shop}/cart`){
+// Open/reuse the cart tab (safer noopener style)
+function openCartTab(url = `https://${SHOPIFY.shop}/cart`) {
   const name = 'SHOPIFY_CART';
-  if (!cartWin || cartWin.closed) {
-    cartWin = window.open(url, name, 'noopener');
-  } else {
-    try { cartWin.location.href = url; cartWin.focus(); } catch {}
-  }
+  const w = cartWin && !cartWin.closed ? cartWin : window.open('', name);
+  if (!w) return; // popup blocked
+  try { w.opener = null; } catch {}
+  try { w.location.href = url; } catch {}
+  try { w.focus(); } catch {}
+  cartWin = w;
+
   // after a short delay, Shopify will have set cookies -> try to sync real count
   setTimeout(updateCartCount, 1500);
   setTimeout(updateCartCount, 4000);
 }
 
 // Append an item by navigating the named cart tab to cart/add (no CORS issues)
-function addViaUrl(variantId, qty){
-  const q = Math.max(1, Number(qty || 1));
+function addViaUrl(variantId, qty) {
+  const q = Math.max(1, Number(qty) || 1);
   const url = `https://${SHOPIFY.shop}/cart/add?id=${encodeURIComponent(variantId)}&quantity=${q}`;
+
   // optimistic local badge bump so user sees feedback immediately
   localCartCount += q;
   localStorage.setItem('localCartCount', String(localCartCount));
   setBadge(localCartCount);
+
   openCartTab(url);
 }
 
 // ================ BOOT ===================
 document.addEventListener('DOMContentLoaded', () => {
-  // Wire any cart link(s)
+  // Wire cart links to reuse the same named tab
   const cartTargets = [
     ...document.querySelectorAll('[data-cart-link]'),
     ...document.querySelectorAll('#cart-link')
   ];
   cartTargets.forEach(el => {
-    el.setAttribute('href', `https://${SHOPIFY.shop}/cart`);
+    const href = `https://${SHOPIFY.shop}/cart`;
+    el.setAttribute('href', href);           // keep for long-press/copy
     el.setAttribute('target', '_blank');
     el.setAttribute('rel', 'noopener');
-    if (el.tagName !== 'A') {
-      el.addEventListener('click', (e) => { e.preventDefault(); openCartTab(); });
-    }
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      openCartTab(href);
+    });
   });
 
-  // Try to read the real count (works after first time the cart tab has been opened once)
-  updateCartCount();
+  // mobile menu toggle
+  const toggle = document.querySelector('.nav-toggle');
+  const menu = document.getElementById('main-menu');
+  if (toggle && menu) {
+    toggle.addEventListener('click', () => {
+      const open = menu.classList.toggle('is-open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
 
+  // initial attempts to sync cart count
+  updateCartCount();
+  setInterval(updateCartCount, 10000);
+
+  // filters + products
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
   loadProducts().catch(err => console.error('loadProducts failed', err));
-  // keep trying to sync periodically
-  setInterval(updateCartCount, 10000);
 });
 
 // ================ DATA LOAD ==============
 async function loadProducts() {
   const res = await fetch('assets/products.json', { cache: 'no-store' });
-  if (!res.ok) { console.error('products.json fetch failed:', res.status, res.statusText); return; }
+  if (!res.ok) {
+    console.error('products.json fetch failed:', res.status, res.statusText);
+    return;
+  }
   const items = await res.json();
 
   // Category grids
@@ -99,12 +120,12 @@ async function loadProducts() {
     fg.innerHTML = picks.map(p => productCard(p)).join('');
   }
 
-  // Wire events
+  // Wire events after render
   wireCards(items);
 }
 
 // ================ RENDER ================
-function productCard(p){
+function productCard(p) {
   if (p.simple) {
     return `
     <div class="card" data-id="${p.id}">
@@ -163,7 +184,7 @@ function productCard(p){
           <input type="number" class="qty" min="1" value="1"/>
         </div>
         <label class="checkbox" ${p.powdercoat_variant_id ? '' : 'style="display:none"'}>
-          <input type="checkbox" class="powder"/> Powdercoat Black +$${p.powdercoat_price||50}
+          <input type="checkbox" class="powder"/> Powdercoat Black +$${p.powdercoat_price || 50}
         </label>
       </div>
       <button class="btn add">ADD TO CART</button>
@@ -172,17 +193,17 @@ function productCard(p){
 }
 
 // ================ WIRING ================
-function wireCards(items){
-  document.querySelectorAll('.card').forEach(card=>{
-    const product = items.find(x=>x.id === card.dataset.id);
+function wireCards(items) {
+  document.querySelectorAll('.card').forEach(card => {
+    const product = items.find(x => x.id === card.dataset.id);
     const btn = card.querySelector('.add');
     const qtyEl = card.querySelector('.qty');
     const powderEl = card.querySelector('.powder');
 
     if (product.simple) {
       const varSel = card.querySelector('.simple-variant');
-      btn.addEventListener('click', ()=>{
-        const qty = Math.max(1, parseInt(qtyEl?.value || '1', 10));
+      btn.addEventListener('click', () => {
+        const qty = Math.max(1, parseInt(qtyEl?.value, 10) || 1);
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
         if (variantId) addViaUrl(variantId, qty);
         openCartTab(); // brings/reuses the tab
@@ -195,30 +216,30 @@ function wireCards(items){
     const opt2 = card.querySelector('.opt2');
     const opt3 = card.querySelector('.opt3');
 
-    opt1?.addEventListener('change', ()=>{
+    opt1?.addEventListener('change', () => {
       const o1 = opt1.value;
       const o2Vals = Object.keys(vmap[o1] || {});
-      if (opt2) opt2.innerHTML = o2Vals.map(v=>`<option value="${v}">${v}</option>`).join('');
+      if (opt2) opt2.innerHTML = o2Vals.map(v => `<option value="${v}">${v}</option>`).join('');
       const o2 = opt2 ? opt2.value : o2Vals[0];
       const o3Vals = (vmap[o1] && vmap[o1][o2] && typeof vmap[o1][o2] === 'object')
         ? Object.keys(vmap[o1][o2]) : [];
-      if (opt3) opt3.innerHTML = o3Vals.map(v=>`<option value="${v}">${v}</option>`).join('');
+      if (opt3) opt3.innerHTML = o3Vals.map(v => `<option value="${v}">${v}</option>`).join('');
     });
 
-    opt2?.addEventListener('change', ()=>{
+    opt2?.addEventListener('change', () => {
       const o1 = opt1 ? opt1.value : Object.keys(vmap)[0];
       const o2 = opt2.value;
       const o3Vals = (vmap[o1] && vmap[o1][o2] && typeof vmap[o1][o2] === 'object')
         ? Object.keys(vmap[o1][o2]) : [];
-      if (opt3) opt3.innerHTML = o3Vals.map(v=>`<option value="${v}">${v}</option>`).join('');
+      if (opt3) opt3.innerHTML = o3Vals.map(v => `<option value="${v}">${v}</option>`).join('');
     });
 
-    btn.addEventListener('click', ()=>{
+    btn.addEventListener('click', () => {
       const o1 = opt1 ? opt1.value : Object.keys(vmap)[0];
       const o2 = opt2 ? opt2.value : (vmap[o1] ? Object.keys(vmap[o1])[0] : '');
       const node = vmap[o1]?.[o2];
       const o3 = opt3 ? opt3.value : (node && typeof node === 'object' ? Object.keys(node)[0] : '');
-      const qty = Math.max(1, parseInt(qtyEl?.value || '1', 10));
+      const qty = Math.max(1, parseInt(qtyEl?.value, 10) || 1);
 
       let variantId = null;
       if (typeof node === 'object') {
@@ -237,9 +258,9 @@ function wireCards(items){
 }
 
 // ================ FILTERS ================
-function initFilters(){
-  document.querySelectorAll('.toggle').forEach(t=>{
-    t.addEventListener('click',()=>{
+function initFilters() {
+  document.querySelectorAll('.toggle').forEach(t => {
+    t.addEventListener('click', () => {
       t.classList.toggle('active');
       updateUrlFromFilters();
       loadProducts();
@@ -247,29 +268,21 @@ function initFilters(){
   });
   const params = new URLSearchParams(window.location.search);
   const tags = params.getAll('tag');
-  if(tags.length){
-    document.querySelectorAll('.toggle').forEach(t=>{
-      if(tags.includes(t.dataset.tag)) t.classList.add('active');
+  if (tags.length) {
+    document.querySelectorAll('.toggle').forEach(t => {
+      if (tags.includes(t.dataset.tag)) t.classList.add('active');
     });
   }
 }
-function getActiveTags(){
-  return Array.from(document.querySelectorAll('.toggle.active')).map(el=>el.dataset.tag);
+
+function getActiveTags() {
+  return Array.from(document.querySelectorAll('.toggle.active')).map(el => el.dataset.tag);
 }
-function updateUrlFromFilters(){
+
+function updateUrlFromFilters() {
   const tags = getActiveTags();
   const params = new URLSearchParams();
-  tags.forEach(t=>params.append('tag',t));
-  const newUrl = window.location.pathname + (tags.length?('?'+params.toString()):'');
-  history.replaceState({},'',newUrl);
+  tags.forEach(t => params.append('tag', t));
+  const newUrl = window.location.pathname + (tags.length ? ('?' + params.toString()) : '');
+  history.replaceState({}, '', newUrl);
 }
-document.addEventListener('DOMContentLoaded', () => {
-  const toggle = document.querySelector('.nav-toggle');
-  const menu = document.getElementById('main-menu');
-  if (!toggle || !menu) return;
-
-  toggle.addEventListener('click', () => {
-    const open = menu.classList.toggle('is-open');
-    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-  });
-});
