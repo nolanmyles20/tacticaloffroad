@@ -108,11 +108,25 @@ body{
 @media (max-width:800px){
   .links{display:none;}
   .nav-toggle{display:inline-flex;}
-  .menu{display:block;}                 /* allow the panel to animate open */
-  .menu.is-open{max-height:600px; display:block !important;} /* override [hidden] if present */
 
-  /* Make each tab full-width/tappable */
+  .menu{
+    display:block;
+    grid-template-columns:1fr;
+    max-height:0;
+    overflow:hidden;
+  }
+
+  .menu.is-open{
+    max-height:600px;
+    display:grid !important;
+    grid-template-columns:1fr;
+  }
+
   .menu .tab{
-    margin:0; width:100%; text-align:left; padding:10px 14px;
+    margin:0;
+    width:100%;
+    text-align:left;
+    padding:10px 14px;
   }
 }
+
