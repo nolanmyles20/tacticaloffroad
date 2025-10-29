@@ -62,7 +62,7 @@
   {
     "id": "ar15-flash",
     "title": "FLASH SUPPRESSOR",
-    "desc": "AR-15 FLASH SUPPRESSOR, 1/2-28 THREAD.",
+    "desc": "AR-15 FLASH SUPPRESSOR, Rook.",
     "basePrice": 79,
     "platforms": ["AR-15"],
     "tags": ["Flash Suppressors", "Thread Adapters", "Crush Washers"],
@@ -75,11 +75,27 @@
   {
     "id": "ar15-flash-2",
     "title": "FLASH SUPPRESSOR",
-    "desc": "AR-15 FLASH SUPPRESSOR, 1/2-28 THREAD.",
+    "desc": "AR-15 FLASH SUPPRESSOR,Rook.",
     "basePrice": 79,
     "platforms": ["AR-15"],
     "tags": ["Flash Suppressors", "Thread Adapters", "Crush Washers"],
     "image": "assets/IMG_4495.jpeg",
+    "option_labels": { "first": "Thread", "second": "Caliber" },
+    "variant_ids": {
+      "Thread": { "1/2-28": "VARIANT_ID_FA_1", "5/8-24": "VARIANT_ID_FA_2", "9/16-32": "VARIANT_ID_FA_3" },
+      "Caliber": { "5.56": "VARIANT_ID_FS_1", "9mm": "VARIANT_ID_FS_2", "308": "VARIANT_ID_FS_3" }
+    }
+  },
+  
+  {
+    "id": "ar15-flash-3",
+    "title": "FLASH SUPPRESSOR",
+    "desc": "AR-15 FLASH SUPPRESSOR, Predator.",
+    "basePrice": 79,
+    "platforms": ["AR-15"],
+    "tags": ["Flash Suppressors", "Thread Adapters", "Crush Washers"],
+    "image": "assets/IMG_4496.jpeg",
+    "option_labels": { "first": "Thread", "second": "Caliber" },
     "variant_ids": {
       "Thread": { "1/2-28": "VARIANT_ID_FA_1", "5/8-24": "VARIANT_ID_FA_2", "9/16-32": "VARIANT_ID_FA_3" },
       "Caliber": { "5.56": "VARIANT_ID_FS_1", "9mm": "VARIANT_ID_FS_2", "308": "VARIANT_ID_FS_3" }
