@@ -33,6 +33,15 @@ document.addEventListener('DOMContentLoaded', () => {
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
   loadProducts().catch(err => console.error('loadProducts failed', err));
 });
+document.addEventListener('DOMContentLoaded', ()=>{
+  const c=document.getElementById('cart-link');
+  if(c) c.href = `https://${SHOPIFY.shop}/cart`;
+
+  updateCartCount();  // <-- add this line
+
+  initFilters();
+  loadProducts();
+});
 
 // ================ DATA LOAD ==============
 async function loadProducts() {
