@@ -25,9 +25,9 @@
 
   <!-- Inner rectangular void (hole) -->
   <!-- Creates the inner opening of the O -->
-  <rect x="370" y="610" width="260" height="240" fill="#fff"/>
+  <rect x="370" y="610" width="260" height="240" fill="none"/>
 
   <!-- Vertical split (small gap) through the O -->
   <!-- Cuts a narrow slot to separate left/right halves -->
-  <rect x="495" y="560" width="10" height="340" fill="#fff"/>
+  <rect x="495" y="560" width="10" height="340" fill="none"/>
 </svg>
