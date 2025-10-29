@@ -1,6 +1,18 @@
 // ================ CONFIG =================
 const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // switch to 'shop.tacticaloffroad.store' once SSL is live
 
+async function updateCartCount(){
+  try {
+    const res = await fetch(`https://${SHOPIFY.shop}/cart.js`);
+    if(!res.ok) return;
+    const data = await res.json();
+    const countEl = document.getElementById('cart-count');
+    if(countEl) countEl.textContent = data.item_count;
+  } catch(err){
+    console.error('Cart count fetch error:', err);
+  }
+}
+
 // ================ BOOT ===================
 document.addEventListener('DOMContentLoaded', () => {
   // Wire any cart link(s)
