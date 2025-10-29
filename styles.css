@@ -119,4 +119,14 @@ body {
     background-size: contain;
   }
 }
+.logo-link {
+  display: flex;
+  align-items: center;
+  margin-right: 20px;
+}
+
+.logo {
+  height: 36px; /* adjust size here */
+  width: auto;
+}
 
