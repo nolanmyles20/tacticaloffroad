@@ -179,4 +179,12 @@ body{
     padding:10px 14px;
   }
 }
+.hero h1 {
+  display: inline-block;          /* shrink-wrap to text */
+  background: #d3d4d6;            /* medium gray to match navbar */
+  color: #000;                    /* black text */
+  padding: 10px 18px;             /* spacing around text */
+  border: 2px solid #000;         /* black outline */
+  border-radius: 6px;             /* subtle rounding */
+}
 
