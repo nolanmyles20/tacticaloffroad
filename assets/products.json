@@ -6,7 +6,7 @@
     "basePrice": 899,
     "platforms": ["Humvee","Jeep"],
     "tags": ["Armor","Stainless"],
-    "image": "assets/coming-soon.png",
+    "image": "assets/coming-soon-centered.png",
     "variant_ids": {
       "Armor": { "1mm": "VARIANT_ID_A_1", "2mm": "VARIANT_ID_A_2", "3mm": "VARIANT_ID_A_3" },
       "Stainless": { "1mm": "VARIANT_ID_S_1", "2mm": "VARIANT_ID_S_2", "3mm": "VARIANT_ID_S_3" }
@@ -21,7 +21,7 @@
     "basePrice": 169,
     "platforms": ["Jeep"],
     "tags": ["Armor","Stainless"],
-    "image": "assets/coming-soon.png",
+    "image": "assets/coming-soon-centered.png",
     "variant_ids": {
       "Armor": { "1mm": "VARIANT_ID_JA_1", "2mm": "VARIANT_ID_JA_2", "3mm": "VARIANT_ID_JA_3" },
       "Stainless": { "1mm": "VARIANT_ID_JS_1", "2mm": "VARIANT_ID_JS_2", "3mm": "VARIANT_ID_JS_3" }
@@ -36,7 +36,7 @@
     "basePrice": 1499,
     "platforms": ["Humvee"],
     "tags": ["Roof","Armor","Stainless"],
-    "image": "assets/coming-soon.png",
+    "image": "assets/coming-soon-centered.png",
     "variant_ids": {
       "Armor": { "1mm": "VARIANT_ID_RA_1", "2mm": "VARIANT_ID_RA_2", "3mm": "VARIANT_ID_RA_3" },
       "Stainless": { "1mm": "VARIANT_ID_RS_1", "2mm": "VARIANT_ID_RS_2", "3mm": "VARIANT_ID_RS_3" }
@@ -51,7 +51,7 @@
     "basePrice": 399,
     "platforms": ["Humvee"],
     "tags": ["Rear Curtain","Windows"],
-    "image": "assets/coming-soon.png",
+    "image": "assets/coming-soon-centered.png",
     "variant_ids": {
       "Armor": { "1mm": "VARIANT_ID_CA_1", "2mm": "VARIANT_ID_CA_2", "3mm": "VARIANT_ID_CA_3" },
       "Stainless": { "1mm": "VARIANT_ID_CS_1", "2mm": "VARIANT_ID_CS_2", "3mm": "VARIANT_ID_CS_3" }
@@ -66,7 +66,7 @@
     "basePrice": 79,
     "platforms": ["AR-15"],
     "tags": ["Flash Suppressors","Thread Adapters","Crush Washers"],
-    "image": "assets/coming-soon.png",
+    "image": "assets/coming-soon-centered.png",
     "variant_ids": {
       "Armor": { "1mm": "VARIANT_ID_FA_1", "2mm": "VARIANT_ID_FA_2", "3mm": "VARIANT_ID_FA_3" },
       "Stainless": { "1mm": "VARIANT_ID_FS_1", "2mm": "VARIANT_ID_FS_2", "3mm": "VARIANT_ID_FS_3" }
@@ -105,7 +105,7 @@
     "basePrice": 0,
     "platforms": ["Cross-Karts"],
     "tags": [],
-    "image": "assets/coming-soon.png",
+    "image": "assets/coming-soon-centered.png",
     "simple": true,
     "variant_ids": {
       "Solo": { "Default": "VARIANT_ID_CK_SOLO" }
