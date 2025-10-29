@@ -1,29 +1,51 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TACTICAL OFFROAD — HOME</title>
 <link rel="stylesheet" href="styles.css">
 <script defer src="scripts.js"></script>
-</head><body>
+</head>
+
+<body>
 <nav class="nav">
   <div class="links">
-    <a class="tab" href="/">HOME</a>
-    <a class="tab" href="/humvee.html">HUMVEE</a>
-    <a class="tab" href="/jeep.html">JEEP</a>
-    <a class="tab" href="/ar15.html">AR-15</a>
-    <a class="tab" href="/crosskarts.html">CROSS-KARTS</a>
-    <a class="tab" href="/contact.html">CONTACT</a>
+    <a class="tab nav-tab" href="/">HOME</a>
+    <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
+    <a class="tab nav-tab" href="/jeep.html">JEEP</a>
+    <a class="tab nav-tab" href="/ar15.html">AR-15</a>
+    <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
+    <a class="tab nav-tab" href="/contact.html">CONTACT</a>
   </div>
-  <div style="margin-left:auto"><a id="cart-link" class="tab" href="#">CART</a></div>
+
+  <div style="margin-left:auto; display:flex; align-items:center;">
+    <a id="cart-link"
+       class="tab nav-tab"
+       data-cart-link
+       target="_blank"
+       rel="noopener">
+       <img src="assets/cart-icon.svg" class="cart-icon" alt="Cart" style="width:20px;vertical-align:middle;">
+       &nbsp;CART <span id="cart-count" class="cart-count">0</span>
+    </a>
+  </div>
 </nav>
 
 <main class="container">
   <section class="hero">
     <h1>TACTICAL OFFROAD</h1>
-    <p class="badge">RUGGED AFTERMARKET PARTS FOR HUMVEE • JEEP • AR‑15 • CROSS‑KARTS</p>
+    <p class="badge">RUGGED AFTERMARKET PARTS FOR HUMVEE • JEEP • AR-15 • CROSS-KARTS</p>
   </section>
+
   <section>
     <h2>FEATURED</h2>
     <div id="featured-grid" class="grid"></div>
   </section>
 </main>
-<footer class="footer">© 2025 TACTICAL OFFROAD — HUMVEE • JEEP • AR‑15 • CROSS‑KARTS</footer></body></html>
+
+<footer class="footer">
+  © 2025 TACTICAL OFFROAD — HUMVEE • JEEP • AR-15 • CROSS-KARTS
+</footer>
+
+</body>
+</html>
