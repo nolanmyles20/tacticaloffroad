@@ -1,16 +1,52 @@
 // ================ CONFIG =================
-const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // switch to 'shop.tacticaloffroad.store' once SSL is live
+const SHOPIFY = { shop: 'shop.tacticaloffroad.store' }; // fallback to 'tacticaloffroad.myshopify.com' if shop. SSL not ready
+let cartWin = null; // reuse one cart tab
 
-// ================ CART COUNT ==============
+// ================ HELPERS =================
 async function updateCartCount(){
   try {
-    const res = await fetch(`https://${SHOPIFY.shop}/cart.js`, { cache: 'no-store' });
+    const res = await fetch(`https://${SHOPIFY.shop}/cart.js`, {
+      credentials: 'include',
+      cache: 'no-store',
+      mode: 'cors'
+    });
     if(!res.ok) return;
     const data = await res.json();
     const countEl = document.getElementById('cart-count');
     if(countEl) countEl.textContent = data.item_count;
   } catch(err){
     console.error('Cart count fetch error:', err);
+  }
+}
+
+async function addToCart(variantId, qty){
+  // POST /cart/add.js appends to existing cart
+  const form = new URLSearchParams();
+  form.append('id', variantId);
+  form.append('quantity', String(qty || 1));
+  try {
+    const res = await fetch(`https://${SHOPIFY.shop}/cart/add.js`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      body: form.toString(),
+      credentials: 'include',
+      mode: 'cors'
+    });
+    if(!res.ok){
+      const t = await res.text();
+      console.error('addToCart failed', res.status, t);
+    }
+  } catch(e){
+    console.error('addToCart error', e);
+  }
+}
+
+function openCartTab(){
+  const url = `https://${SHOPIFY.shop}/cart`;
+  if(!cartWin || cartWin.closed){
+    cartWin = window.open(url, '_blank', 'noopener');
+  } else {
+    try { cartWin.location.href = url; cartWin.focus(); } catch {}
   }
 }
 
@@ -28,13 +64,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.tagName !== 'A') {
       el.addEventListener('click', (e) => {
         e.preventDefault();
-        window.open(`https://${SHOPIFY.shop}/cart`, '_blank');
+        openCartTab();
       });
     }
   });
 
   updateCartCount();
-  setInterval(updateCartCount, 10000); // auto-refresh count every 10s
+  setInterval(updateCartCount, 10000); // auto-refresh count
 
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
   loadProducts().catch(err => console.error('loadProducts failed', err));
@@ -146,16 +182,12 @@ function wireCards(items){
 
     if (product.simple) {
       const varSel = card.querySelector('.simple-variant');
-      btn.addEventListener('click', ()=>{
+      btn.addEventListener('click', async ()=>{
         const qty = Math.max(1, parseInt(qtyEl?.value || '1', 10));
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
-        updateCartCount();
-        window.open(
-          variantId
-            ? `https://${SHOPIFY.shop}/cart/${variantId}:${qty}`
-            : `https://${SHOPIFY.shop}/cart`,
-          '_blank'
-        );
+        if (variantId) await addToCart(variantId, qty);
+        await updateCartCount();
+        openCartTab();
       });
       return;
     }
@@ -183,7 +215,7 @@ function wireCards(items){
       if (opt3) opt3.innerHTML = o3Vals.map(v=>`<option value="${v}">${v}</option>`).join('');
     });
 
-    btn.addEventListener('click', ()=>{
+    btn.addEventListener('click', async ()=>{
       const o1 = opt1 ? opt1.value : Object.keys(vmap)[0];
       const o2 = opt2 ? opt2.value : (vmap[o1] ? Object.keys(vmap[o1])[0] : '');
       const node = vmap[o1]?.[o2];
@@ -192,23 +224,20 @@ function wireCards(items){
 
       let variantId = null;
       if (typeof node === 'object') {
-        variantId = node?.[o3] || null;
+        variantId = node?.[o3] || null;     // 3-level map
       } else {
-        variantId = vmap[o1]?.[o2] || null;
+        variantId = vmap[o1]?.[o2] || null; // 2-level map
       }
 
-      const parts = variantId ? [`${variantId}:${qty}`] : [];
+      if (variantId) {
+        await addToCart(variantId, qty);
+      }
       if (powderEl && powderEl.checked && product.powdercoat_variant_id) {
-        parts.push(`${product.powdercoat_variant_id}:1`);
+        await addToCart(product.powdercoat_variant_id, 1);
       }
 
-      updateCartCount();
-      window.open(
-        parts.length
-          ? `https://${SHOPIFY.shop}/cart/${parts.join(',')}`
-          : `https://${SHOPIFY.shop}/cart`,
-        '_blank'
-      );
+      await updateCartCount();
+      openCartTab();
     });
   });
 }
