@@ -138,4 +138,89 @@ body {
   height: 36px; /* adjust size here */
   width: auto;
 }
+/* --- Top bar layout --- */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: #d3d4d6;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logo-link { display:flex; align-items:center; margin-right:auto; }
+.logo { height:36px; width:auto; display:block; }
+
+/* Cart stays on the right */
+.nav-cart { display:flex; align-items:center; gap:8px; font-weight:700; }
+
+/* --- Hamburger --- */
+.nav-toggle {
+  display: none;             /* hidden on desktop */
+  border: 2px solid #000;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-left: 8px;
+}
+.nav-toggle .bar {
+  display:block;
+  width:22px; height:2px;
+  background:#000;
+  margin:5px 0;
+}
+.nav-toggle:focus { outline: 2px solid #000; outline-offset: 2px; }
+.sr-only { position:absolute; left:-9999px; }
+
+/* --- Collapsible menu panel --- */
+.menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 18px 16px;
+  background: #e1e2e4;
+  border-bottom: 1px solid var(--border);
+
+  /* collapsed by default on mobile via max-height trick */
+  max-height: none;          /* desktop */
+  overflow: visible;         /* desktop */
+  transition: max-height 0.25s ease;
+}
+
+/* DESKTOP: show links inline (like your old .links) */
+@media (min-width: 801px) {
+  .nav-toggle { display: none; }
+  .menu {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    border: 0;
+    background: transparent;
+    gap: 8px;
+  }
+}
+
+/* MOBILE: collapse menu and show hamburger */
+@media (max-width: 800px) {
+  .nav-toggle { display: inline-flex; }
+  .menu {
+    display: grid;
+    grid-template-columns: 1fr;  /* single column for tidy stacking */
+    max-height: 0;               /* collapsed */
+    overflow: hidden;            /* hide when collapsed */
+  }
+  .menu.is-open {
+    max-height: 600px;           /* enough room to reveal; adjust if you add items */
+  }
+  /* Make each tab full-width/tappable on mobile */
+  .menu .tab {
+    margin: 0;                   /* remove inline margins */
+    width: 100%;
+    text-align: left;
+    padding: 10px 14px;
+  }
+}
 
