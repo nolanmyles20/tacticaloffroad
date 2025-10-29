@@ -1,226 +1,107 @@
-
 :root{
-  --bg:#e5e6e7;
-  --fg:#0b0b0b;
-  --muted:#6b6b6b;
-  --border:#bcbec0;
-  --card:#ffffff;
-  --accent:#7d7f82;
-  --invert-bg:#0b0b0b;
-  --invert-fg:#e5e6e7;
+  --bg:#e5e6e7; --fg:#0b0b0b; --muted:#6b6b6b; --border:#bcbec0;
+  --card:#ffffff; --accent:#7d7f82; --invert-bg:#0b0b0b; --invert-fg:#e5e6e7;
 }
+
 @font-face{
   font-family:'Black Ops One Local';
   src:url('assets/fonts/BlackOpsOne-Regular.woff2') format('woff2'),
       url('assets/fonts/BlackOpsOne-Regular.woff') format('woff');
-  font-weight:400;
-  font-style:normal;
-  font-display:swap;
+  font-weight:400; font-style:normal; font-display:swap;
 }
 
 html, body {
+  margin:0; padding:0;
+  background:var(--bg); color:var(--fg);
   font-family:'Black Ops One Local', sans-serif;
-  text-transform:uppercase;
-  letter-spacing:1px;
+  text-transform:uppercase; letter-spacing:1px;
 }
-
-
 *{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:'Black Ops One Local', sans-serif;text-transform:uppercase;letter-spacing:1px}
 img{max-width:100%;display:block}
 a{color:inherit;text-decoration:none}
-.nav{display:flex;align-items:center;gap:12px;padding:12px 18px;background:#d3d4d6;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
-.nav .links{display:flex;gap:8px;flex-wrap:wrap}
-.tab {
-  border: 2px solid black;
-  padding: 6px 14px;
-  margin: 0 4px;
-  transition: 0.15s ease-in-out;
 
-  /* beveled rectangle */
-  clip-path: polygon(
-    10% 0%,
-    90% 0%,
-    100% 10%,
-    100% 90%,
-    90% 100%,
-    10% 100%,
-    0% 90%,
-    0% 10%
-  );
+/* --- Top bar layout --- */
+.nav{
+  position:sticky; top:0; z-index:10;
+  display:flex; align-items:center; gap:12px;
+  padding:calc(12px + env(safe-area-inset-top,0)) 18px 12px 18px;
+  background:#d3d4d6; border-bottom:1px solid var(--border);
 }
-.tab:hover{background:var(--invert-bg);color:var(--invert-fg)}
-.container{max-width:1100px;margin:0 auto;padding:24px}
-.hero{padding:36px 0;text-align:center}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
-.card{background:var(--card);border:2px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
-.card .content{padding:12px;display:flex;flex-direction:column;gap:8px}
-.badge{font-size:12px;color:var(--muted);padding:4px 8px;border-radius:999px;border:1px solid var(--border);display:inline-block}
-.price{font-weight:800}
-.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.controls label{font-size:12px;color:var(--muted)}
-.select, .qty{padding:8px;border:2px solid var(--border);border-radius:6px;background:#fff;font:inherit;letter-spacing:inherit}
-.checkbox{display:flex;align-items:center;gap:8px}
-.btn{display:inline-block;padding:10px 14px;border:2px solid var(--fg);border-radius:6px;text-align:center}
-.btn:hover{background:var(--invert-bg);color:var(--invert-fg)}
-.filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-.toggle{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;border:2px solid var(--border);cursor:pointer;background:var(--card)}
-.toggle.active{background:var(--accent);color:var(--invert-fg);border-color:var(--accent)}
-.footer{text-align:center;padding:20px;color:var(--muted);border-top:1px solid var(--border);margin-top:36px}
-@media(max-width:800px){.controls{grid-template-columns:1fr}}
+.logo-link{display:flex; align-items:center; margin-right:auto;}
+.logo{height:36px; width:auto; display:block;}
 
-.nav-cart {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
-}
+.nav-cart{display:flex; align-items:center; gap:8px; font-weight:700;}
+.cart-icon{width:20px; height:20px; display:inline-block; filter:brightness(0); transition:transform .2s;}
+.nav-cart:hover .cart-icon{transform:scale(1.1);}
 
-.cart-icon {
-  width: 20px;
-  height: 20px;
-  display: inline-block;
-  filter: brightness(0); /* black */
-  transition: transform 0.2s ease;
+.tab{
+  border:2px solid #000; padding:6px 14px; margin:0 4px; transition:.15s;
+  clip-path:polygon(10% 0%,90% 0%,100% 10%,100% 90%,90% 100%,10% 100%,0% 90%,0% 10%);
 }
+.tab:hover{background:var(--invert-bg); color:var(--invert-fg);}
 
-.nav-cart:hover .cart-icon {
-  transform: scale(1.1);
-}
-.nav a,
-#nav a,
-header nav a {
-  font-weight: 700;
-  font-size: 1.25em; /* ~25% larger */
-}
-.cart-count {
-  background: #f6c314;
-  color: #000;
-  font-weight: 700;
-  font-size: 0.8em;
-  padding: 2px 6px;
-  border-radius: 6px;
-  margin-left: 4px;
-  display: inline-block;
-  min-width: 20px;
-  text-align: center;
-}
-body {
-  background-image: url("assets/diamond-plate.png"); /* your path */
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-body {
-  background-attachment: scroll;
-}
-@media (max-width: 768px) {
-  body {
-    /* Tile the texture */
-    background-repeat: repeat;
-    background-position: top center;
+.container{max-width:1100px; margin:0 auto; padding:24px;}
+.hero{padding:36px 0; text-align:center;}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px;}
+.card{background:var(--card); border:2px solid var(--border); border-radius:8px; overflow:hidden; display:flex; flex-direction:column;}
+.card .content{padding:12px; display:flex; flex-direction:column; gap:8px;}
+.badge{font-size:12px; color:var(--muted); padding:4px 8px; border-radius:999px; border:1px solid var(--border); display:inline-block;}
+.price{font-weight:800;}
+.controls{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.controls label{font-size:12px; color:var(--muted);}
+.select,.qty{padding:8px; border:2px solid var(--border); border-radius:6px; background:#fff; font:inherit; letter-spacing:inherit;}
+.checkbox{display:flex; align-items:center; gap:8px;}
+.btn{display:inline-block; padding:10px 14px; border:2px solid var(--fg); border-radius:6px; text-align:center;}
+.btn:hover{background:var(--invert-bg); color:var(--invert-fg);}
+.filters{display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;}
+.toggle{display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px; border:2px solid var(--border); cursor:pointer; background:var(--card);}
+.toggle.active{background:var(--accent); color:var(--invert-fg); border-color:var(--accent);}
+.footer{text-align:center; padding:20px; color:var(--muted); border-top:1px solid var(--border); margin-top:36px;}
+@media (max-width:800px){ .controls{grid-template-columns:1fr;} }
 
-    /* Set a tile size that looks good on phones.
-       Tweak the first value (width) to taste (e.g., 180px, 220px, 260px). */
-    background-size: 220px auto;
-
-    background-attachment: scroll; /* safer on mobile */
+/* Background */
+body{
+  background-image:url("assets/diamond-plate.png");
+  background-size:cover; background-position:center; background-repeat:no-repeat; background-attachment:scroll;
+}
+/* Mobile tiling */
+@media (max-width:800px){
+  body{
+    background-repeat:repeat;
+    background-position:top center;
+    background-size:220px auto;   /* adjust to taste */
   }
 }
-
-.logo-link {
-  display: flex;
-  align-items: center;
-  margin-right: 20px;
-}
-
-.logo {
-  height: 36px; /* adjust size here */
-  width: auto;
-}
-/* --- Top bar layout --- */
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 18px;
-  background: #d3d4d6;
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.logo-link { display:flex; align-items:center; margin-right:auto; }
-.logo { height:36px; width:auto; display:block; }
-
-/* Cart stays on the right */
-.nav-cart { display:flex; align-items:center; gap:8px; font-weight:700; }
 
 /* --- Hamburger --- */
-.nav-toggle {
-  display: none;             /* hidden on desktop */
-  border: 2px solid #000;
-  background: transparent;
-  padding: 8px 10px;
-  border-radius: 6px;
-  margin-left: 8px;
+.nav-toggle{
+  display:none; border:2px solid #000; background:transparent;
+  padding:8px 10px; border-radius:6px; margin-left:8px;
 }
-.nav-toggle .bar {
-  display:block;
-  width:22px; height:2px;
-  background:#000;
-  margin:5px 0;
-}
-.nav-toggle:focus { outline: 2px solid #000; outline-offset: 2px; }
-.sr-only { position:absolute; left:-9999px; }
+.nav-toggle .bar{display:block; width:22px; height:2px; background:#000; margin:5px 0;}
+.nav-toggle:focus{outline:2px solid #000; outline-offset:2px;}
+.sr-only{position:absolute; left:-9999px;}
 
 /* --- Collapsible menu panel --- */
-.menu {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 18px 16px;
-  background: #e1e2e4;
-  border-bottom: 1px solid var(--border);
-
-  /* collapsed by default on mobile via max-height trick */
-  max-height: none;          /* desktop */
-  overflow: visible;         /* desktop */
-  transition: max-height 0.25s ease;
+.menu{
+  display:flex; flex-wrap:wrap; gap:10px;
+  padding:10px 18px 16px; background:#e1e2e4; border-bottom:1px solid var(--border);
+  max-height:none; overflow:visible; transition:max-height .25s ease;
 }
 
-/* DESKTOP: show links inline (like your old .links) */
-@media (min-width: 801px) {
-  .nav-toggle { display: none; }
-  .menu {
-    display: flex;
-    align-items: center;
-    padding: 0 18px;
-    border: 0;
-    background: transparent;
-    gap: 8px;
-  }
+/* Desktop */
+@media (min-width:801px){
+  .nav-toggle{display:none;}
+  .menu{display:flex; align-items:center; padding:0 18px; border:0; background:transparent; gap:8px;}
 }
 
-/* MOBILE: collapse menu and show hamburger */
-@media (max-width: 800px) {
-  .nav-toggle { display: inline-flex; }
-  .menu {
-    display: grid;
-    grid-template-columns: 1fr;  /* single column for tidy stacking */
-    max-height: 0;               /* collapsed */
-    overflow: hidden;            /* hide when collapsed */
+/* Mobile */
+@media (max-width:800px){
+  .nav-toggle{display:inline-flex;}
+  .menu{
+    display:grid; grid-template-columns:1fr;
+    max-height:0; overflow:hidden;
   }
-  .menu.is-open {
-    max-height: 600px;           /* enough room to reveal; adjust if you add items */
-  }
-  /* Make each tab full-width/tappable on mobile */
-  .menu .tab {
-    margin: 0;                   /* remove inline margins */
-    width: 100%;
-    text-align: left;
-    padding: 10px 14px;
-  }
+  .menu.is-open{ max-height:600px; }
+  .menu .tab{ margin:0; width:100%; text-align:left; padding:10px 14px; }
 }
-
