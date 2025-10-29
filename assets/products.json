@@ -66,7 +66,7 @@
     "basePrice": 79,
     "platforms": ["AR-15"],
     "tags": ["Flash Suppressors", "Thread Adapters", "Crush Washers"],
-    "image": "assets/IMG-4494.jpeg",
+    "image": "assets/IMG_4494.jpeg",
     "variant_ids": {
       "Thread": { "1/2-28": "VARIANT_ID_FA_1", "5/8-24": "VARIANT_ID_FA_2", "9/16-32": "VARIANT_ID_FA_3" },
       "Caliber": { "5.56": "VARIANT_ID_FS_1", "9mm": "VARIANT_ID_FS_2", "308": "VARIANT_ID_FS_3" }
@@ -79,7 +79,7 @@
     "basePrice": 79,
     "platforms": ["AR-15"],
     "tags": ["Flash Suppressors", "Thread Adapters", "Crush Washers"],
-    "image": "assets/IMG-4495.jpeg",
+    "image": "assets/IMG_4495.jpeg",
     "variant_ids": {
       "Thread": { "1/2-28": "VARIANT_ID_FA_1", "5/8-24": "VARIANT_ID_FA_2", "9/16-32": "VARIANT_ID_FA_3" },
       "Caliber": { "5.56": "VARIANT_ID_FS_1", "9mm": "VARIANT_ID_FS_2", "308": "VARIANT_ID_FS_3" }
