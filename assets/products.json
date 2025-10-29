@@ -66,15 +66,26 @@
     "basePrice": 79,
     "platforms": ["AR-15"],
     "tags": ["Flash Suppressors","Thread Adapters","Crush Washers"],
-    "image": "assets/coming-soon-centered.png",
+    "image": "assets/IMG-4494.jpeg",
     "variant_ids": {
-      "Armor": { "1mm": "VARIANT_ID_FA_1", "2mm": "VARIANT_ID_FA_2", "3mm": "VARIANT_ID_FA_3" },
-      "Stainless": { "1mm": "VARIANT_ID_FS_1", "2mm": "VARIANT_ID_FS_2", "3mm": "VARIANT_ID_FS_3" }
+      "Thread": { "1/2-28": "VARIANT_ID_FA_1", "5/8-24": "VARIANT_ID_FA_2", "9/16-32": "VARIANT_ID_FA_3" },
+      "Caliber": { "5.56": "VARIANT_ID_FS_1", "9mm": "VARIANT_ID_FS_2", "308": "VARIANT_ID_FS_3" }
     },
-    "powdercoat_variant_id": "POWDERCOAT_BLACK_TEXTURED",
-    "powdercoat_price": 50
   },
-
+  
+  {
+    "id": "ar15-flash",
+    "title": "FLASH SUPPRESSOR",
+    "desc": "AR-15 FLASH SUPPRESSOR, 1/2-28 THREAD.",
+    "basePrice": 79,
+    "platforms": ["AR-15"],
+    "tags": ["Flash Suppressors","Thread Adapters","Crush Washers"],
+    "image": "assets/IMG-4495.jpeg",
+    "variant_ids": {
+      "Thread": { "1/2-28": "VARIANT_ID_FA_1", "5/8-24": "VARIANT_ID_FA_2", "9/16-32": "VARIANT_ID_FA_3" },
+      "Caliber": { "5.56": "VARIANT_ID_FS_1", "9mm": "VARIANT_ID_FS_2", "308": "VARIANT_ID_FS_3" }
+    },
+  },
   {
     "id": "humvee-rear-insert",
     "title": "HUMVEE REAR INSERT",
