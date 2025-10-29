@@ -1,5 +1,5 @@
 // ================ CONFIG =================
-const SHOPIFY = { shop: 'shop.tacticaloffroad.store' }; // fallback to 'tacticaloffroad.myshopify.com' if shop. SSL not ready
+const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // fallback to 'tacticaloffroad.myshopify.com' if shop. SSL not ready
 let cartWin = null; // reuse one cart tab
 
 // ================ HELPERS =================
