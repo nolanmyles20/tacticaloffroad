@@ -1,53 +1,53 @@
 // ================ CONFIG =================
 const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // fallback to 'tacticaloffroad.myshopify.com' if shop. SSL not ready
-let cartWin = null; // reuse one cart tab
+let cartWin = null;                  // single, reusable cart tab
+let localCartCount = Number(localStorage.getItem('localCartCount') || 0);
 
-// ================ HELPERS =================
+// ================ BADGE ==================
+function setBadge(n){
+  const el = document.getElementById('cart-count');
+  if (el) el.textContent = String(n);
+}
+setBadge(localCartCount);
+
+// Try to pull the real count from Shopify (works best after the first cart page loads in the tab)
 async function updateCartCount(){
   try {
     const res = await fetch(`https://${SHOPIFY.shop}/cart.js`, {
-      credentials: 'include',
-      cache: 'no-store',
-      mode: 'cors'
+      credentials: 'include', cache: 'no-store', mode: 'cors'
     });
     if(!res.ok) return;
     const data = await res.json();
-    const countEl = document.getElementById('cart-count');
-    if(countEl) countEl.textContent = data.item_count;
-  } catch(err){
-    console.error('Cart count fetch error:', err);
+    localCartCount = data.item_count;
+    localStorage.setItem('localCartCount', String(localCartCount));
+    setBadge(localCartCount);
+  } catch(_e){
+    // ignore; fallback stays visible
   }
 }
 
-async function addToCart(variantId, qty){
-  // POST /cart/add.js appends to existing cart
-  const form = new URLSearchParams();
-  form.append('id', variantId);
-  form.append('quantity', String(qty || 1));
-  try {
-    const res = await fetch(`https://${SHOPIFY.shop}/cart/add.js`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-      body: form.toString(),
-      credentials: 'include',
-      mode: 'cors'
-    });
-    if(!res.ok){
-      const t = await res.text();
-      console.error('addToCart failed', res.status, t);
-    }
-  } catch(e){
-    console.error('addToCart error', e);
-  }
-}
-
-function openCartTab(){
-  const url = `https://${SHOPIFY.shop}/cart`;
-  if(!cartWin || cartWin.closed){
-    cartWin = window.open(url, '_blank', 'noopener');
+// Open/reuse the cart tab
+function openCartTab(url = `https://${SHOPIFY.shop}/cart`){
+  const name = 'SHOPIFY_CART';
+  if (!cartWin || cartWin.closed) {
+    cartWin = window.open(url, name, 'noopener');
   } else {
     try { cartWin.location.href = url; cartWin.focus(); } catch {}
   }
+  // after a short delay, Shopify will have set cookies -> try to sync real count
+  setTimeout(updateCartCount, 1500);
+  setTimeout(updateCartCount, 4000);
+}
+
+// Append an item by navigating the named cart tab to cart/add (no CORS issues)
+function addViaUrl(variantId, qty){
+  const q = Math.max(1, Number(qty || 1));
+  const url = `https://${SHOPIFY.shop}/cart/add?id=${encodeURIComponent(variantId)}&quantity=${q}`;
+  // optimistic local badge bump so user sees feedback immediately
+  localCartCount += q;
+  localStorage.setItem('localCartCount', String(localCartCount));
+  setBadge(localCartCount);
+  openCartTab(url);
 }
 
 // ================ BOOT ===================
@@ -62,18 +62,17 @@ document.addEventListener('DOMContentLoaded', () => {
     el.setAttribute('target', '_blank');
     el.setAttribute('rel', 'noopener');
     if (el.tagName !== 'A') {
-      el.addEventListener('click', (e) => {
-        e.preventDefault();
-        openCartTab();
-      });
+      el.addEventListener('click', (e) => { e.preventDefault(); openCartTab(); });
     }
   });
 
+  // Try to read the real count (works after first time the cart tab has been opened once)
   updateCartCount();
-  setInterval(updateCartCount, 10000); // auto-refresh count
 
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
   loadProducts().catch(err => console.error('loadProducts failed', err));
+  // keep trying to sync periodically
+  setInterval(updateCartCount, 10000);
 });
 
 // ================ DATA LOAD ==============
@@ -182,12 +181,11 @@ function wireCards(items){
 
     if (product.simple) {
       const varSel = card.querySelector('.simple-variant');
-      btn.addEventListener('click', async ()=>{
+      btn.addEventListener('click', ()=>{
         const qty = Math.max(1, parseInt(qtyEl?.value || '1', 10));
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
-        if (variantId) await addToCart(variantId, qty);
-        await updateCartCount();
-        openCartTab();
+        if (variantId) addViaUrl(variantId, qty);
+        openCartTab(); // brings/reuses the tab
       });
       return;
     }
@@ -215,7 +213,7 @@ function wireCards(items){
       if (opt3) opt3.innerHTML = o3Vals.map(v=>`<option value="${v}">${v}</option>`).join('');
     });
 
-    btn.addEventListener('click', async ()=>{
+    btn.addEventListener('click', ()=>{
       const o1 = opt1 ? opt1.value : Object.keys(vmap)[0];
       const o2 = opt2 ? opt2.value : (vmap[o1] ? Object.keys(vmap[o1])[0] : '');
       const node = vmap[o1]?.[o2];
@@ -229,14 +227,10 @@ function wireCards(items){
         variantId = vmap[o1]?.[o2] || null; // 2-level map
       }
 
-      if (variantId) {
-        await addToCart(variantId, qty);
-      }
+      if (variantId) addViaUrl(variantId, qty);
       if (powderEl && powderEl.checked && product.powdercoat_variant_id) {
-        await addToCart(product.powdercoat_variant_id, 1);
+        addViaUrl(product.powdercoat_variant_id, 1);
       }
-
-      await updateCartCount();
       openCartTab();
     });
   });
