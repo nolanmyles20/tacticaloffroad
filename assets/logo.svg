@@ -1,92 +1,33 @@
-<!-- Beveled Triangle with Honeycomb Pattern + True Black Ops One T over O (outline only, corrected placement & O lips) -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1000 1000">
-  <defs>
-    <!-- Honeycomb hex cell -->
-    <g id="hexcell">
-      <path id="hex"
-            d="M 50,0 L 25,43.30127 L -25,43.30127 L -50,0 L -25,-43.30127 L 25,-43.30127 Z"
-            fill="none" stroke="#000" stroke-width="6" stroke-linejoin="miter" />
-    </g>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1000" height="1000" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <!-- Transparent background -->
+  <rect x="0" y="0" width="1000" height="1000" fill="none"/>
 
-    <!-- Honeycomb pattern -->
-    <pattern id="honeycomb" patternUnits="userSpaceOnUse"
-             x="0" y="0" width="150" height="86.60254" patternTransform="translate(0,0) scale(0.8)">
-      <use href="#hex" x="0" y="43.30127"/>
-      <use href="#hex" x="150" y="43.30127"/>
-      <use href="#hex" x="75" y="0"/>
-      <use href="#hex" x="225" y="0"/>
-    </pattern>
+  <!-- ===== T (two rectangles with vertical gap) ===== -->
+  <!-- Top bar -->
+  <rect x="140" y="140" width="720" height="90" fill="#000"/>
+  <!-- Stem (separate piece) -->
+  <rect x="430" y="260" width="140" height="260" fill="#000"/>
 
-    <!-- Beveled triangle clip + outline -->
-    <clipPath id="triClip">
-      <path d="
-        M 535.777,171.554
-        L 464.223,171.554
-        L 135.777,828.446
-        L 180,900
-        L 820,900
-        L 864.223,828.446
-        Z" />
-    </clipPath>
+  <!-- ===== O (octagon outer, inner rectangle, and small vertical split) ===== -->
+  <!-- Outer chamfered octagon -->
+  <!-- Octagon bounding approx: 240..760 x 560..900 with 80px chamfers -->
+  <path d="
+    M 320 560
+    L 680 560
+    L 760 640
+    L 760 820
+    L 680 900
+    L 320 900
+    L 240 820
+    L 240 640
+    Z" fill="#000"/>
 
-    <path id="triOutline" d="
-        M 535.777,171.554
-        L 464.223,171.554
-        L 135.777,828.446
-        L 180,900
-        L 820,900
-        L 864.223,828.446
-        Z" fill="none"/>
-  </defs>
+  <!-- Inner rectangular void (hole) -->
+  <!-- Creates the inner opening of the O -->
+  <rect x="370" y="610" width="260" height="240" fill="#fff"/>
 
-  <!-- Honeycomb clipped to triangle -->
-  <rect x="0" y="0" width="1000" height="1000" fill="url(#honeycomb)" clip-path="url(#triClip)"/>
-
-  <!-- Triangle border -->
-  <use href="#triOutline" stroke="#000" stroke-width="14" />
-
-  <!-- ================= T / O =================
-       - outline only
-       - stroke = 14 (matches triangle)
-       - T lowered inside apex
-       - O sits directly below T (no overlap)
-       - O inner bar has top/bottom "lips" (true Black Ops One look)
-  -->
-  <g id="TO"
-     transform="translate(500,680)"  <!-- move whole stack down; adjust this Y if needed -->
-     stroke="#000" stroke-width="14" fill="none" stroke-linejoin="miter" stroke-linecap="butt">
-
-    <!-- T (fully inside the triangle now) -->
-    <!-- Top bar -->
-    <path d="M -150 -300 H 150 V -260 H -150 Z"/>
-    <!-- Stem -->
-    <path d="M -32 -260 H 32 V -150 H -32 Z"/>
-
-    <!-- O (directly below the T; no overlap) -->
-    <!-- Outer octagon -->
-    <!-- Proportions tuned to Black Ops One: narrower width, taller height, 45° corners -->
-    <path d="
-      M -120  -80
-      L  -80 -120
-      L   80 -120
-      L  120  -80
-      L  120  160
-      L   80  200
-      L  -80  200
-      L -120  160
-      Z"/>
-
-    <!-- Inner vertical bar with 'lips' (outline-only, not a plain rectangle) -->
-    <!-- Lips are small chamfers that make the top/bottom edges flare slightly, matching the font -->
-    <path d="
-      M -28 -120
-      L -16 -140
-      L  16 -140
-      L  28 -120
-      L  28  160
-      L  16  180
-      L -16  180
-      L -28  160
-      Z"/>
-  </g>
+  <!-- Vertical split (small gap) through the O -->
+  <!-- Cuts a narrow slot to separate left/right halves -->
+  <rect x="495" y="560" width="10" height="340" fill="#fff"/>
 </svg>
