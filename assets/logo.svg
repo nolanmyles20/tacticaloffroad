@@ -3,49 +3,63 @@
 
   <rect x="0" y="0" width="1000" height="1000" fill="none"/>
 
-  <!-- ===== T ===== -->
+  <!-- T -->
   <rect x="140" y="140" width="720" height="90" fill="#000"/>
   <rect x="430" y="260" width="140" height="260" fill="#000"/>
 
-  <!-- ===== O ===== -->
-  <path d="M 320 560 L 680 560 L 760 640 L 760 820 L 680 900 L 320 900 L 240 820 L 240 640 Z" fill="#000"/>
-  <rect x="370" y="610" width="260" height="240" fill="#fff"/>
-  <rect x="495" y="560" width="10" height="340" fill="#fff"/>
+  <!-- O (compound cutout) -->
+  <path d="
+    M 320 560
+    L 680 560
+    L 760 640
+    L 760 820
+    L 680 900
+    L 320 900
+    L 240 820
+    L 240 640
+    Z
+
+    M 370 610
+    L 370 850
+    L 630 850
+    L 630 610
+    Z
+
+    M 495 560
+    L 505 560
+    L 505 900
+    L 495 900
+    Z
+  " fill="#000" fill-rule="evenodd"/>
 
   <defs>
-    <!-- Honeycomb cell -->
     <g id="hexcell">
       <path d="M50,0 25,43.30127 -25,43.30127 -50,0 -25,-43.30127 25,-43.30127Z"
-            fill="none" stroke="#000" stroke-width="6"/>
+            fill="none" stroke="#000" stroke-width="14" stroke-linejoin="miter"/>
     </g>
 
-    <!--
-      Honeycomb anchored on a vertex intersection at ~center
-      and nudged RIGHT 5px
-    -->
     <pattern id="honeycomb" patternUnits="userSpaceOnUse"
-      x="445" y="485.358984"  <!-- previously 440 → +5px -->
+      x="404.8" y="490.111"
       width="150" height="86.60254"
-      patternTransform="scale(0.8)">
-
+      patternTransform="scale(1.056)">
       <use href="#hexcell" x="0"   y="43.30127"/>
       <use href="#hexcell" x="150" y="43.30127"/>
       <use href="#hexcell" x="75"  y="0"/>
       <use href="#hexcell" x="225" y="0"/>
     </pattern>
 
-    <!-- Widened hex -->
     <clipPath id="hexClip">
-      <path d="M -250,520 L 200,47 L 800,47 L 1250,520 L 800,993 L 200,993Z"/>
+      <path d="M -246,520 L 204,47 L 804,47 L 1254,520 L 804,993 L 204,993Z"/>
     </clipPath>
 
-    <path id="hexOutline" d="M -250,520 L 200,47 L 800,47 L 1250,520 L 800,993 L 200,993Z"
+    <path id="hexOutline" d="M -246,520 L 204,47 L 804,47 L 1254,520 L 804,993 L 204,993Z"
           fill="none"/>
   </defs>
 
   <g clip-path="url(#hexClip)">
-    <rect x="-400" y="-200" width="1800" height="1600" fill="url(#honeycomb)"/>
+    <rect x="-500" y="-300" width="2000" height="1600" fill="url(#honeycomb)"/>
   </g>
 
-  <use href="#hexOutline" stroke="#000" stroke-width="14"/>
+  <use href="#hexOutline" stroke="#000" stroke-width="20"/>
+
 </svg>
