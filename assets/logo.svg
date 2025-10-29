@@ -4,8 +4,8 @@
   <style>
     @font-face{
       font-family: 'Black Ops One';
-      src: url('assets/fonts/BlackOpsOne-Regular.woff2') format('woff2'),
-           url('assets/fonts/BlackOpsOne-Regular.woff')  format('woff');
+      src: url('fonts/BlackOpsOne-Regular.woff2') format('woff2'),
+           url('fonts/BlackOpsOne-Regular.woff')  format('woff');
       font-weight: 400;
       font-style: normal;
       font-display: swap;
