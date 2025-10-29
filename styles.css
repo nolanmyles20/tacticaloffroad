@@ -129,4 +129,54 @@ body{
     padding:10px 14px;
   }
 }
+/* ===== NAV LAYOUT: center tabs, cart always right ===== */
+.nav{
+  display: grid;
+  grid-template-columns: auto 1fr auto; /* logo | links/hamburger | cart */
+  align-items: center;
+}
+
+/* Desktop: show original inline tabs, centered */
+.links{
+  display: flex;
+  justify-content: center;   /* center the tabs */
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 auto;            /* extra safety for centering */
+}
+
+/* Cart anchored to the right */
+.nav-cart{
+  justify-self: end;
+}
+
+/* Mobile: hamburger centered in the top bar */
+@media (max-width: 800px){
+  .links{ display:none; }          /* hide desktop links */
+  .nav-toggle{
+    display:inline-flex;
+    grid-column: 2;                /* center column */
+    justify-self: center;
+  }
+}
+
+/* If you want the MOBILE slide-down menu's tabs centered too, keep this: */
+@media (max-width: 800px){
+  .menu{
+    display:block;
+    grid-template-columns: 1fr;
+    max-height:0; overflow:hidden;
+  }
+  .menu.is-open{
+    max-height:600px;
+    display:grid !important;
+    grid-template-columns: 1fr;
+  }
+  .menu .tab{
+    margin:0;
+    width:100%;
+    text-align:center;  /* center text inside each button */
+    padding:10px 14px;
+  }
+}
 
