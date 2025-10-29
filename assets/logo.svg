@@ -30,4 +30,88 @@
   <!-- Vertical split (small gap) through the O -->
   <!-- Cuts a narrow slot to separate left/right halves -->
   <rect x="495" y="560" width="10" height="340" fill="#fff"/>
+
+
+
+  <defs>
+    <!-- Honeycomb hex cell -->
+    <g id="hexcell">
+      <path id="hex"
+        d="M 50,0 L 25,43.30127 L -25,43.30127 L -50,0 L -25,-43.30127 L 25,-43.30127 Z"
+        fill="none" stroke="#000" stroke-width="6" stroke-linejoin="miter"/>
+    </g>
+
+    <!-- Honeycomb pattern -->
+    <pattern id="honeycomb" patternUnits="userSpaceOnUse"
+      x="0" y="0" width="150" height="86.60254" patternTransform="translate(0,0) scale(0.8)">
+      <use href="#hex" x="0" y="43.30127"/>
+      <use href="#hex" x="150" y="43.30127"/>
+      <use href="#hex" x="75" y="0"/>
+      <use href="#hex" x="225" y="0"/>
+    </pattern>
+
+    <!-- Beveled triangle clip + outline (slightly larger than previous) -->
+    <clipPath id="triClip">
+      <path d="M 545.777,160 L 454.223,160 L 120,840 L 170,915 L 830,915 L 880,840 Z"/>
+    </clipPath>
+
+    <path id="triOutline" d="M 545.777,160 L 454.223,160 L 120,840 L 170,915 L 830,915 L 880,840 Z" fill="none"/>
+  </defs>
+
+  <!-- Honeycomb clipped to triangle -->
+  <rect x="0" y="0" width="1000" height="1000" fill="url(#honeycomb)" clip-path="url(#triClip)"/>
+
+  <!-- Triangle border -->
+  <use href="#triOutline" stroke="#000" stroke-width="14"/>
+
+  <!-- ================= T / O =================
+       - outline-only (no fills), stroke=14
+       - T has a vertical gap (two rectangles, separated)
+       - O outer is split into LEFT and RIGHT halves (true gap, not a line)
+       - O inner bar has 'lips' top/bottom
+  -->
+  <g id="TO" transform="translate(500,690)" stroke="#000" stroke-width="14" fill="none"
+     stroke-linejoin="miter" stroke-linecap="butt">
+
+    <!-- ===== T (two rectangles, vertical gap) ===== -->
+    <!-- Top bar -->
+    <path d="M -150 -300 H 150 V -260 H -150 Z"/>
+    <!-- Stem (lowered a bit to leave visible vertical gap under bar) -->
+    <path d="M -32 -240 H 32 V -130 H -32 Z"/>
+
+    <!-- ===== O (split outer halves + inner bar with lips) ===== -->
+    <!-- Geometry box for reference: top=-120, bottom=200, left=-120, right=120; small center gap ~10px -->
+
+    <!-- LEFT outer half (real split: path stops at x=-5) -->
+    <path d="
+      M -120  160
+      L  -80  200
+      L   -5  200
+      L   -5 -120
+      L  -80 -120
+      L -120  -80
+      Z"/>
+
+    <!-- RIGHT outer half (real split: path starts at x=5) -->
+    <path d="
+      M    5 -120
+      L   80 -120
+      L  120  -80
+      L  120  160
+      L   80  200
+      L    5  200
+      Z"/>
+
+    <!-- Inner vertical bar with 'lips' (outline only) -->
+    <path d="
+      M -28 -120
+      L -16 -140
+      L  16 -140
+      L  28 -120
+      L  28  160
+      L  16  180
+      L -16  180
+      L -28  160
+      Z"/>
+  </g>
 </svg>
