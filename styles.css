@@ -76,3 +76,15 @@ header nav a {
   font-weight: 700;
   font-size: 1.25em; /* ~25% larger */
 }
+.cart-count {
+  background: #f6c314;
+  color: #000;
+  font-weight: 700;
+  font-size: 0.8em;
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-left: 4px;
+  display: inline-block;
+  min-width: 20px;
+  text-align: center;
+}
