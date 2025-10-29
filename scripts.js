@@ -33,8 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  updateCartCount();  
-  setInterval(updateCartCount, 10000); // auto-refresh count
+  updateCartCount();
+  setInterval(updateCartCount, 10000); // auto-refresh count every 10s
 
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
   loadProducts().catch(err => console.error('loadProducts failed', err));
@@ -152,7 +152,7 @@ function wireCards(items){
         updateCartCount();
         window.open(
           variantId
-            ? `https://${SHOPIFY.shop}/cart/${variantId}:${qty}?channel=buy_button`
+            ? `https://${SHOPIFY.shop}/cart/${variantId}:${qty}`
             : `https://${SHOPIFY.shop}/cart`,
           '_blank'
         );
@@ -205,7 +205,7 @@ function wireCards(items){
       updateCartCount();
       window.open(
         parts.length
-          ? `https://${SHOPIFY.shop}/cart/${parts.join(',')}?channel=buy_button`
+          ? `https://${SHOPIFY.shop}/cart/${parts.join(',')}`
           : `https://${SHOPIFY.shop}/cart`,
         '_blank'
       );
