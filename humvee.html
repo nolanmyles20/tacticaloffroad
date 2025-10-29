@@ -4,27 +4,46 @@
 <link rel="icon" type="image/png" href="assets/favicon_white.png">
 <link rel="stylesheet" href="styles.css">
 <script defer src="scripts.js"></script>
-</head><body>
+</head>
+<body>
 <nav class="nav">
+  <a href="/" class="logo-link">
+    <img src="assets/logo.svg" alt="TACTICAL OFFROAD" class="logo">
+  </a>
+
+  <!-- DESKTOP links (shown on >=801px; hidden on mobile via CSS) -->
   <div class="links">
-    <a class="tab" href="/">HOME</a>
-    <a class="tab" href="/humvee.html">HUMVEE</a>
-    <a class="tab" href="/jeep.html">JEEP</a>
-    <a class="tab" href="/ar15.html">AR-15</a>
-    <a class="tab" href="/crosskarts.html">CROSS-KARTS</a>
-    <a class="tab" href="/contact.html">CONTACT</a>
+    <a class="tab nav-tab" href="/">HOME</a>
+    <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
+    <a class="tab nav-tab" href="/jeep.html">JEEP</a>
+    <a class="tab nav-tab" href="/ar15.html">AR-15</a>
+    <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
+    <a class="tab nav-tab" href="/contact.html">CONTACT</a>
   </div>
-  <div style="margin-left:auto; display:flex; align-items:center;">
-    <a id="cart-link"
-       class="tab nav-tab"
-       data-cart-link
-       target="_blank"
-       rel="noopener">
-       <img src="assets/cart-icon.svg" class="cart-icon" alt="Cart" style="width:20px;vertical-align:middle;">
-       &nbsp;CART <span id="cart-count" class="cart-count">0</span>
-    </a>
-  </div>
+
+  <!-- Mobile toggle (hidden on desktop via CSS) -->
+  <button class="nav-toggle" aria-expanded="false" aria-controls="main-menu">
+    <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    <span class="sr-only">Menu</span>
+  </button>
+
+  <!-- Cart (always visible) -->
+  <a id="cart-link" class="nav-cart" data-cart-link target="_blank" rel="noopener">
+    <img src="assets/cart-icon.svg" class="cart-icon" alt="Cart">
+    CART <span id="cart-count" class="cart-count">0</span>
+  </a>
 </nav>
+
+<!-- MOBILE-only menu (hidden on desktop via CSS; toggled open with .is-open) -->
+<div id="main-menu" class="menu" hidden>
+  <a class="tab nav-tab" href="/">HOME</a>
+  <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
+  <a class="tab nav-tab" href="/jeep.html">JEEP</a>
+  <a class="tab nav-tab" href="/ar15.html">AR-15</a>
+  <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
+  <a class="tab nav-tab" href="/contact.html">CONTACT</a>
+</div>
+
 
 <main class="container">
   <div class="product-header"><h1>Humvee</h1></div>
