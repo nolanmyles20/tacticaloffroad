@@ -1,9 +1,10 @@
 // ================ CONFIG =================
 const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // switch to 'shop.tacticaloffroad.store' once SSL is live
 
+// ================ CART COUNT ==============
 async function updateCartCount(){
   try {
-    const res = await fetch(`https://${SHOPIFY.shop}/cart.js`);
+    const res = await fetch(`https://${SHOPIFY.shop}/cart.js`, { cache: 'no-store' });
     if(!res.ok) return;
     const data = await res.json();
     const countEl = document.getElementById('cart-count');
@@ -22,25 +23,21 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
   cartTargets.forEach(el => {
     el.setAttribute('href', `https://${SHOPIFY.shop}/cart`);
+    el.setAttribute('target', '_blank');
+    el.setAttribute('rel', 'noopener');
     if (el.tagName !== 'A') {
       el.addEventListener('click', (e) => {
         e.preventDefault();
-        window.location.href = `https://${SHOPIFY.shop}/cart`;
+        window.open(`https://${SHOPIFY.shop}/cart`, '_blank');
       });
     }
   });
 
+  updateCartCount();  
+  setInterval(updateCartCount, 10000); // auto-refresh count
+
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
   loadProducts().catch(err => console.error('loadProducts failed', err));
-});
-document.addEventListener('DOMContentLoaded', ()=>{
-  const c=document.getElementById('cart-link');
-  if(c) c.href = `https://${SHOPIFY.shop}/cart`;
-
-  updateCartCount();  // <-- add this line
-
-  initFilters();
-  loadProducts();
 });
 
 // ================ DATA LOAD ==============
@@ -152,9 +149,13 @@ function wireCards(items){
       btn.addEventListener('click', ()=>{
         const qty = Math.max(1, parseInt(qtyEl?.value || '1', 10));
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
-        window.location.href = variantId
-          ? `https://${SHOPIFY.shop}/cart/${variantId}:${qty}?channel=buy_button`
-          : `https://${SHOPIFY.shop}/cart`;
+        updateCartCount();
+        window.open(
+          variantId
+            ? `https://${SHOPIFY.shop}/cart/${variantId}:${qty}?channel=buy_button`
+            : `https://${SHOPIFY.shop}/cart`,
+          '_blank'
+        );
       });
       return;
     }
@@ -164,7 +165,6 @@ function wireCards(items){
     const opt2 = card.querySelector('.opt2');
     const opt3 = card.querySelector('.opt3');
 
-    // keep selects in sync
     opt1?.addEventListener('change', ()=>{
       const o1 = opt1.value;
       const o2Vals = Object.keys(vmap[o1] || {});
@@ -184,30 +184,31 @@ function wireCards(items){
     });
 
     btn.addEventListener('click', ()=>{
-      const o1 = opt1 ? opt1.value : Object.keys(vmap)[0];                    // first option
-      const o2 = opt2 ? opt2.value : (vmap[o1] ? Object.keys(vmap[o1])[0] : ''); // second option
+      const o1 = opt1 ? opt1.value : Object.keys(vmap)[0];
+      const o2 = opt2 ? opt2.value : (vmap[o1] ? Object.keys(vmap[o1])[0] : '');
       const node = vmap[o1]?.[o2];
       const o3 = opt3 ? opt3.value : (node && typeof node === 'object' ? Object.keys(node)[0] : '');
       const qty = Math.max(1, parseInt(qtyEl?.value || '1', 10));
 
       let variantId = null;
       if (typeof node === 'object') {
-        variantId = node?.[o3] || null;     // 3-level map
+        variantId = node?.[o3] || null;
       } else {
-        variantId = vmap[o1]?.[o2] || null; // 2-level map
+        variantId = vmap[o1]?.[o2] || null;
       }
 
-      if (!variantId) {
-        console.warn('No variant mapping', { id: product.id, o1, o2, o3, vmap });
-        window.location.href = `https://${SHOPIFY.shop}/cart`;
-        return;
-      }
-
-      const parts = [`${variantId}:${qty}`];
+      const parts = variantId ? [`${variantId}:${qty}`] : [];
       if (powderEl && powderEl.checked && product.powdercoat_variant_id) {
         parts.push(`${product.powdercoat_variant_id}:1`);
       }
-      window.location.href = `https://${SHOPIFY.shop}/cart/${parts.join(',')}?channel=buy_button`;
+
+      updateCartCount();
+      window.open(
+        parts.length
+          ? `https://${SHOPIFY.shop}/cart/${parts.join(',')}?channel=buy_button`
+          : `https://${SHOPIFY.shop}/cart`,
+        '_blank'
+      );
     });
   });
 }
