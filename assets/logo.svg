@@ -1,0 +1,48 @@
+<svg width="900" height="900" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg">
+  <!-- =========================================
+       TRIANGLE + HONEYCOMB (RESET, CLEAN)
+       - Equilateral triangle (point up)
+       - Equal chamfers via bevelled stroke
+       - Honeycomb matches flat-top hex geometry
+       ========================================= -->
+
+  <!-- Triangle outline (equal sides). Bevel join => uniform chamfers. -->
+  <!-- Edit stroke-width below to make chamfers heavier/lighter. -->
+  <path id="tri" d="M450 140 L720 700 L180 700 Z"
+        fill="none" stroke="#000" stroke-width="52" stroke-linejoin="bevel"/>
+
+  <!-- ---------- TRUE honeycomb pattern (flat-top hex) ---------- -->
+  <!-- Hex side length s = 18 (change 's' by scaling points below if you want tighter/looser grid)
+       width = 2s, height = sqrt(3)*s, and we tile using a 3*s x sqrt(3)*s cell
+       with one center hex and two seam hexes for perfect repeat. -->
+  <defs>
+    <!-- One flat-top hex (s = 18) -->
+    <!-- Points computed so the hex is not squashed:
+         width = 36, height = 31.176914536 (≈ √3 * 18), vertical half-height = 15.588457268 -->
+    <g id="hex">
+      <polygon
+        points="18,0 36,7.7942 36,23.3827 18,31.1769 0,23.3827 0,7.7942"
+        fill="none" stroke="#000" stroke-width="3" />
+    </g>
+
+    <!-- Honeycomb tiling cell:
+         width = 3*s (=54), height = √3*s (=31.1769)
+         Center + two offset “seam” hexes guarantee no gaps on edges. -->
+    <pattern id="honeycomb" patternUnits="userSpaceOnUse" width="54" height="31.1769">
+      <!-- center row -->
+      <use href="#hex" x="18" y="0"/>
+      <!-- seam fixers (half-step up/down, half-cell to the right) -->
+      <use href="#hex" x="45" y="-15.58845"/>
+      <use href="#hex" x="45" y="15.58845"/>
+    </pattern>
+
+    <!-- Clip honeycomb to triangle interior -->
+    <clipPath id="clipTri">
+      <path d="M450 140 L720 700 L180 700 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Honeycomb inside triangle only -->
+  <rect x="150" y="120" width="600" height="600"
+        fill="url(#honeycomb)" clip-path="url(#clipTri)"/>
+</svg>
