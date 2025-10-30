@@ -28,11 +28,12 @@ async function updateCartCount() {
 }
 
 // ================= ONE NAMED CART TAB, ALWAYS =================
-// Click an <a> with target="SHOPIFY_CART" so the browser *reuses* that tab.
-// Works consistently across desktop + iOS/Android.
+// Use an <a target="SHOPIFY_CART"> so the browser reuses that tab across desktop & mobile.
 function openInCartTab(url) {
   const a = document.createElement('a');
-  a.href = url;
+  // add a cache-buster so mobile never shows a stale page
+  const sep = url.includes('?') ? '&' : '?';
+  a.href = `${url}${sep}_=${Date.now()}`;
   a.target = CART_NAME;        // reuse named tab
   a.rel = 'noreferrer';        // avoid opener side-effects
   a.style.display = 'none';
@@ -43,16 +44,16 @@ function openInCartTab(url) {
 
 // Prime cart tab (loads /cart), then we can navigate it again for adds.
 function primeCartTab() {
+  if (DEBUG) console.log('[cart] prime tab → /cart');
   openInCartTab(CART);
 }
 
 // Add a single line via GET, then show /cart (return_to=/cart).
-// We include a cache-buster so browsers never cache the add.
 function addLineGET(variantId, qty) {
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
-  const url = `${CART_ADD}?id=${encodeURIComponent(id)}&quantity=${q}&return_to=%2Fcart&_=${Date.now()}`;
-  if (DEBUG) console.log('[cart] add variant', id, 'qty', q, '→', url);
+  const url = `${CART_ADD}?id=${encodeURIComponent(id)}&quantity=${q}&return_to=%2Fcart`;
+  if (DEBUG) console.log('[cart] add variant', id, 'qty', q);
   openInCartTab(url);
 
   // Sync the real count a few times after Shopify processes
@@ -61,11 +62,13 @@ function addLineGET(variantId, qty) {
   setTimeout(updateCartCount, 6000);
 }
 
-// Add two items serially (e.g., base + powdercoat). Tiny delay between calls
-// prevents Safari/iOS from racing the navigations.
+// Add two items serially (e.g., base + powdercoat). Tiny delay prevents Safari races.
 function addTwoSequentially(v1, q1, v2, q2) {
-  addLineGET(v1, q1);
-  setTimeout(() => addLineGET(v2, q2), 450);  // ~0.5s is enough for mobile
+  primeCartTab();
+  setTimeout(() => {
+    addLineGET(v1, q1);
+    setTimeout(() => addLineGET(v2, q2), 500);
+  }, 150);
 }
 
 // ================= MOBILE NAV HELPERS (unchanged) =================
@@ -95,10 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
     el.setAttribute('href', CART);
     el.setAttribute('target', CART_NAME);   // reuse; NOT _blank
-    el.removeAttribute('rel');              // allow name reuse
-    el.addEventListener('click', (e) => {
-      // let the link actually open (no preventDefault)
-      // then bump count shortly after
+    el.removeAttribute('rel');              // keep named-tab relationship
+    // let the link actually open (no preventDefault)
+    el.addEventListener('click', () => {
       setTimeout(updateCartCount, 1200);
       setTimeout(updateCartCount, 3000);
     });
@@ -248,15 +250,15 @@ function wireCards(items) {
       btn.addEventListener('click', () => {
         const q = Math.max(1, parseInt(qty?.value, 10) || 1);
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
-        if (variantId) {
-          primeCartTab();
+        if (!variantId) { if (DEBUG) console.warn('[cart] missing variantId'); return; }
+        // prime → add (serialize optional second add)
+        primeCartTab();
+        setTimeout(() => {
           addLineGET(variantId, q);
           if (coat && coat.checked && product.powdercoat_variant_id) {
             setTimeout(() => addLineGET(product.powdercoat_variant_id, 1), 500);
           }
-        } else if (DEBUG) {
-          console.warn('[cart] missing variantId');
-        }
+        }, 150);
       });
       return;
     }
@@ -295,15 +297,16 @@ function wireCards(items) {
 
       if (DEBUG) console.log('[cart] chosen variant', variantId, {o1, o2, o3, q});
 
-      if (variantId) {
-        primeCartTab();
+      if (!variantId) { if (DEBUG) console.warn('[cart] no variantId resolved', { product: product.id, o1, o2, o3 }); return; }
+
+      // prime → add (serialize optional second add)
+      primeCartTab();
+      setTimeout(() => {
         addLineGET(variantId, q);
         if (coat && coat.checked && product.powdercoat_variant_id) {
           setTimeout(() => addLineGET(product.powdercoat_variant_id, 1), 500);
         }
-      } else if (DEBUG) {
-        console.warn('[cart] no variantId resolved', { product: product.id, o1, o2, o3 });
-      }
+      }, 150);
     });
   });
 }
