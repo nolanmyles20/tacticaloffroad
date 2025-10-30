@@ -141,82 +141,51 @@ h1, h2{
   clip-path:polygon(10% 0%,90% 0%,100% 10%,100% 90%,90% 100%,10% 100%,0% 90%,0% 10%);
 }
 /* --- FIX HAMBURGER STACKING + X --- */
+
+/* ==== BULLETPROOF HAMBURGER/X (iOS-safe) ==== */
 .nav-toggle{
-  display:inline-flex;              /* (mobile media rule still controls visibility) */
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;            /* <— stack bars vertically */
-  gap:6px;                          /* space between bars */
-  border:2px solid #000;
-  background:transparent;
-  border-radius:6px;
-  min-width:44px; min-height:44px;
-  margin-left:8px;
+  /* visible only on mobile via your media query */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* make a fixed icon box (no layout shift) */
+  width: 44px;          /* tap target */
+  height: 44px;
+  padding: 0;           /* important: no inner padding to offset bars */
+  border: 2px solid #000;
+  border-radius: 6px;
+  background: transparent;
 }
 
+/* 3 bars drawn absolutely *inside the button* */
 .nav-toggle .bar{
-  width:24px;
-  height:2px;
-  background:#000;
-  border-radius:1px;
-  transition:transform .2s ease, opacity .2s ease;
+  position: absolute;
+  left: 50%;
+  width: 24px;
+  height: 2px;
+  background: #000;
+  border-radius: 1px;
+  transform: translateX(-50%);     /* center horizontally */
+  transform-origin: center center;  /* pivot in the middle */
+  transition: transform .18s ease, opacity .18s ease, top .18s ease;
+  will-change: transform, opacity, top;
 }
 
-/* Clean X when open */
+/* closed positions (even spacing) */
+.nav-toggle .bar:nth-child(1){ top: 34%; }
+.nav-toggle .bar:nth-child(2){ top: 50%; }
+.nav-toggle .bar:nth-child(3){ top: 66%; }
+
+/* OPEN → perfect X centered */
+.nav-toggle[aria-expanded="true"] .bar{ top: 50%; }
 .nav-toggle[aria-expanded="true"] .bar:nth-child(1){
-  transform: translateY(8px) rotate(45deg);
+  transform: translateX(-50%) rotate(45deg);
 }
 .nav-toggle[aria-expanded="true"] .bar:nth-child(2){
-  opacity:0;
+  opacity: 0;
 }
 .nav-toggle[aria-expanded="true"] .bar:nth-child(3){
-  transform: translateY(-8px) rotate(-45deg);
-}
-/* --- PERFECT CENTERED X --- */
-.nav-toggle{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;        /* stack when closed */
-  gap:6px;                      /* space between bars (closed) */
-  border:2px solid #000;
-  background:transparent;
-  border-radius:6px;
-  min-width:44px; min-height:44px;
-  position:relative;            /* anchor for absolute bars when open */
-}
-
-.nav-toggle .bar{
-  width:24px;
-  height:2px;
-  background:#000;
-  border-radius:1px;
-  transition:
-    transform .2s ease,
-    opacity .2s ease,
-    top .2s ease,
-    left .2s ease;
-  /* closed: normal flow */
-  position:relative;
-}
-
-/* When open, put both visible bars exactly in the center, then rotate */
-.nav-toggle[aria-expanded="true"]{
-  gap:0;                        /* remove spacing so nothing offsets the X */
-}
-.nav-toggle[aria-expanded="true"] .bar{
-  position:absolute;            /* overlap at the same point */
-  left:50%;
-  top:50%;
-  transform-origin:center;
-}
-
-.nav-toggle[aria-expanded="true"] .bar:nth-child(1){
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-.nav-toggle[aria-expanded="true"] .bar:nth-child(2){
-  opacity:0;                    /* hide middle */
-}
-.nav-toggle[aria-expanded="true"] .bar:nth-child(3){
-  transform: translate(-50%, -50%) rotate(-45deg);
+  transform: translateX(-50%) rotate(-45deg);
 }
