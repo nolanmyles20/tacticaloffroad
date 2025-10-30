@@ -395,3 +395,53 @@ html { scroll-behavior: smooth; }
 .product-card.flash{
   animation: flash 1500ms ease;
 }
+/* --- Title base style --- */
+.nav-title{
+  font-weight: 900;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
+/* Desktop: show logo, title left-aligned */
+@media (min-width:801px){
+  .nav { grid-template-columns: auto 1fr auto; align-items: center; }
+  .logo-link{ display:flex; }
+  .nav-title{
+    grid-column:auto;        /* natural flow */
+    justify-self:start;      /* left on desktop */
+    text-align:left;
+    margin-left:8px;
+  }
+}
+
+/* Mobile: hide logo, 3-column grid → [hamburger | title (center) | cart] */
+@media (max-width:800px){
+  .logo-link{ display:none; }
+
+  .nav{
+    /* burger | title | cart */
+    grid-template-columns: 44px 1fr auto;
+    align-items: center;
+    padding: calc(12px + env(safe-area-inset-top,0)) 16px 12px 16px;
+  }
+
+  .nav-toggle{
+    grid-column: 1;
+    justify-self: start;
+    display: inline-flex !important;
+  }
+
+  .nav-title{
+    grid-column: 2;
+    justify-self: center;    /* centered horizontally */
+    text-align: center;
+    margin: 0;               /* remove stray margins */
+  }
+
+  .nav-cart{
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  .links{ display:none !important; }  /* already in your CSS, just reaffirming */
+}
