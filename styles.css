@@ -189,3 +189,58 @@ h1, h2{
 .nav-toggle[aria-expanded="true"] .bar:nth-child(3){
   transform: translateX(-50%) rotate(-45deg);
 }
+/* ===== Hamburger: perfect spacing closed, perfect X open ===== */
+
+/* Closed state: 3 evenly spaced lines via flex */
+.nav-toggle{
+  display: inline-flex;               /* shown on mobile via your MQ */
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;             /* stack bars */
+  gap: 6px;                           /* even spacing */
+  width: 44px; height: 44px;          /* tap target */
+  padding: 0;                         /* avoid inner offsets */
+  border: 2px solid #000;
+  border-radius: 6px;
+  background: transparent;
+  position: relative;                 /* used when open */
+}
+
+.nav-toggle .bar{
+  width: 24px;
+  height: 2px;
+  background: #000;
+  border-radius: 1px;
+  position: static;                   /* flex children in CLOSED state */
+  transform: none;                    /* reset any prior transforms */
+  opacity: 1;
+  transition: transform .18s ease, opacity .18s ease;
+}
+
+/* Open state: overlap both visible bars at exact center and rotate */
+.nav-toggle[aria-expanded="true"]{
+  gap: 0;                             /* remove spacing while forming X */
+}
+
+.nav-toggle[aria-expanded="true"] .bar{
+  position: absolute;                 /* overlap all bars */
+  left: 50%;
+  top: 50%;
+  transform-origin: center center;
+}
+
+/* top bar */
+.nav-toggle[aria-expanded="true"] .bar:nth-child(1){
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* middle bar disappears */
+.nav-toggle[aria-expanded="true"] .bar:nth-child(2){
+  opacity: 0;
+  transform: translate(-50%, -50%);  /* keep centered while fading */
+}
+
+/* bottom bar */
+.nav-toggle[aria-expanded="true"] .bar:nth-child(3){
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
