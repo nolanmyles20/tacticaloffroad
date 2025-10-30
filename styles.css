@@ -206,4 +206,68 @@ h2 {
     0% 10%
   );
 }
+/* ===== Mobile menu as fixed overlay under sticky nav ===== */
+:root { --nav-h: 64px; } /* will be updated by JS at runtime */
+
+@media (max-width:800px){
+  /* Lock page scroll when menu is open */
+  body.no-scroll { overflow: hidden; }
+
+  /* Make the menu fixed and always visible under the sticky nav when open */
+  .menu{
+    /* previously display:block + animated max-height; replace with overlay */
+    position: fixed;
+    top: var(--nav-h);
+    left: 0;
+    right: 0;
+    z-index: 9;
+    background: #e1e2e4;
+    border-bottom: 1px solid var(--border);
+
+    /* scrolling panel sized to viewport */
+    max-height: calc(100vh - var(--nav-h));
+    overflow-y: auto;
+    display: none; /* hidden until open */
+    padding: 10px 18px 16px;
+  }
+  .menu.is-open{
+    display: block !important; /* force visible when toggled */
+  }
+
+  /* Full-width stacked tabs */
+  .menu .tab{
+    margin: 0;
+    width: 100%;
+    text-align: center;
+    padding: 12px 14px;
+  }
+}
+
+/* ===== Hamburger: classic 3 lines + X animation ===== */
+.nav-toggle{
+  display: none; /* desktop hidden; your media query shows it on mobile */
+  border: 2px solid #000;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-left: 8px;
+
+  /* bigger tap target */
+  min-width: 44px; min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+.nav-toggle .bar{
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: #000;
+  margin: 4px 0;
+  transition: transform .2s ease, opacity .2s ease, width .2s ease;
+}
+
+/* Turn into X when menu is open (using [aria-expanded="true"]) */
+.nav-toggle[aria-expanded="true"] .bar:nth-child(1){ transform: translateY(6px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .bar:nth-child(2){ opacity: 0; }
+.nav-toggle[aria-expanded="true"] .bar:nth-child(3){ transform: translateY(-6px) rotate(-45deg); }
 
