@@ -295,3 +295,103 @@ html { scroll-behavior: smooth; }
 .product-card.flash {
   animation: flash 1500ms ease;
 }
+/* ================= NAV TITLE & POSITIONING (non-destructive overrides) ================= */
+
+/* 1) Add a centered title on mobile, left on desktop.
+   HTML needed (already discussed):
+   <span class="nav-title">TACTICAL OFFROAD</span> inside .nav
+*/
+.nav-title{
+  font-family:'Black Ops One Local', sans-serif;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  color:#000;
+  white-space:nowrap;
+  line-height:1;
+  /* default desktop placement: we'll absolutely place it in the left area */
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  left:72px;               /* sits just to the right of the 36px logo + padding */
+  font-size:18px;
+}
+
+/* Make .nav a positioned container so the absolute title anchors properly */
+.nav{ position:sticky; }
+
+/* Desktop: show logo, keep title on the left, links center (your existing layout). */
+@media (min-width:801px){
+  .logo-link{ display:flex; }
+  .nav-title{
+    display:inline-block;
+    left:72px;             /* adjust if your logo width changes */
+    font-size:18px;
+  }
+}
+
+/* Mobile: hamburger left, title centered, cart right, logo hidden */
+@media (max-width:800px){
+  .nav{
+    display:grid;
+    grid-template-columns:44px 1fr auto; /* hamburger | title | cart */
+    column-gap:8px;
+  }
+  .logo-link{ display:none !important; }  /* hide logo on mobile */
+  .nav-toggle{
+    grid-column:1;
+    justify-self:start;
+    display:inline-flex !important;
+  }
+  .nav-title{
+    position:static;                /* let grid position it */
+    grid-column:2;
+    justify-self:center;
+    align-self:center;
+    transform:none;
+    font-size:16px;
+  }
+  .nav-cart{ grid-column:3; justify-self:end; }
+}
+
+/* ================= BULLETPROOF HAMBURGER (spacing perfect, X perfect) ================= */
+/* These override earlier hamburger rules without removing them */
+
+.nav-toggle{
+  width:44px; height:44px; padding:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  border:2px solid #000; border-radius:6px; background:transparent;
+  position:relative; /* anchor absolute bars on open */
+  gap:6px;           /* closed spacing */
+}
+
+.nav-toggle .bar{
+  width:24px; height:2px; background:#000; border-radius:1px;
+  transition:transform .18s ease, opacity .18s ease;
+}
+
+/* Open state → overlap at center & rotate into X */
+.nav-toggle[aria-expanded="true"]{ gap:0; }
+.nav-toggle[aria-expanded="true"] .bar{
+  position:absolute; left:50%; top:50%; transform-origin:center center;
+}
+.nav-toggle[aria-expanded="true"] .bar:nth-child(1){
+  transform:translate(-50%, -50%) rotate(45deg);
+}
+.nav-toggle[aria-expanded="true"] .bar:nth-child(2){
+  opacity:0; transform:translate(-50%, -50%);
+}
+.nav-toggle[aria-expanded="true"] .bar:nth-child(3){
+  transform:translate(-50%, -50%) rotate(-45deg);
+}
+
+/* ================= HOTSPOT FLASH: cover both .card and .product-card ================= */
+@keyframes flash {
+  0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.0); }
+  30% { box-shadow: 0 0 0 8px rgba(255,0,0,0.20); }
+  60% { box-shadow: 0 0 0 0 rgba(255,0,0,0.0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,0,0,0.0); }
+}
+.card.flash,
+.product-card.flash{
+  animation: flash 1500ms ease;
+}
