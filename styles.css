@@ -16,6 +16,7 @@ html, body {
   background:var(--bg); color:var(--fg);
   font-family:'Black Ops One Local', sans-serif;
   text-transform:uppercase; letter-spacing:1px;
+  height:100%;
 }
 *{box-sizing:border-box}
 img{max-width:100%;display:block}
@@ -24,7 +25,7 @@ a{color:inherit;text-decoration:none}
 /* ================= NAV ================= */
 .nav{
   position:sticky; top:0; z-index:10;
-  display:grid; grid-template-columns:auto 1fr auto; /* logo | links/hamburger | cart */
+  display:grid; grid-template-columns:auto 1fr auto; /* logo/title | links | cart */
   align-items:center; gap:12px;
   padding:calc(12px + env(safe-area-inset-top,0)) 18px 12px 18px;
   background:#d3d4d6; border-bottom:1px solid var(--border);
@@ -49,26 +50,33 @@ a{color:inherit;text-decoration:none}
 }
 .tab:hover{background:var(--invert-bg); color:var(--invert-fg);}
 
+/* ============ NAV TITLE (mobile centered, desktop left) ============ */
+.nav-title{
+  font-weight:900; letter-spacing:2px; line-height:1;
+  white-space:nowrap; color:#000;
+}
+
 /* ============ Hamburger ============ */
 .nav-toggle{
-  border:2px solid #000; background:transparent; border-radius:6px; margin-left:8px;
-  min-width:44px; min-height:44px;
-  display:none; /* hidden by default (desktop) */
-  align-items:center; justify-content:center;
-  grid-column:2; justify-self:center; /* center column on mobile */
+  width:44px; height:44px; padding:0;
+  display:none; /* shown by MQ on mobile */
+  align-items:center; justify-content:center; gap:6px;
+  border:2px solid #000; border-radius:6px; background:transparent;
+  position:relative;
 }
 .nav-toggle:focus{outline:2px solid #000; outline-offset:2px;}
-
 .nav-toggle .bar{
-  width:24px; height:2px; background:#000; border-radius:1px; display:block;
-  transform-origin:center; transition:transform .2s ease, opacity .2s ease;
+  width:24px; height:2px; background:#000; border-radius:1px;
+  transition:transform .18s ease, opacity .18s ease;
 }
-.nav-toggle .bar + .bar{ margin-top:5px; }
-
 /* X animation */
-.nav-toggle[aria-expanded="true"] .bar:nth-child(1){ transform: translateY(7px) rotate(45deg); }
-.nav-toggle[aria-expanded="true"] .bar:nth-child(2){ opacity:0; }
-.nav-toggle[aria-expanded="true"] .bar:nth-child(3){ transform: translateY(-7px) rotate(-45deg); }
+.nav-toggle[aria-expanded="true"]{ gap:0; }
+.nav-toggle[aria-expanded="true"] .bar{
+  position:absolute; left:50%; top:50%; transform-origin:center center;
+}
+.nav-toggle[aria-expanded="true"] .bar:nth-child(1){ transform:translate(-50%,-50%) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .bar:nth-child(2){ opacity:0; transform:translate(-50%,-50%); }
+.nav-toggle[aria-expanded="true"] .bar:nth-child(3){ transform:translate(-50%,-50%) rotate(-45deg); }
 
 .sr-only{position:absolute; left:-9999px;}
 
@@ -80,27 +88,36 @@ a{color:inherit;text-decoration:none}
   max-height:calc(100vh - var(--nav-h)); overflow-y:auto;
   padding:10px 18px 16px;
 }
-#main-menu.is-open{
-  display:grid !important; grid-template-columns:1fr; /* force vertical stack */
-}
-#main-menu .tab{
-  margin:0; width:100%; text-align:center; padding:12px 14px;
-}
+#main-menu.is-open{ display:grid !important; grid-template-columns:1fr; }
+#main-menu .tab{ margin:0; width:100%; text-align:center; padding:12px 14px; }
 
-/* ===== Desktop vs Mobile visibility ===== */
+/* ===== Desktop vs Mobile visibility & layout ===== */
 @media (min-width:801px){
   .links{ display:flex !important; }
   .nav-toggle{ display:none !important; }
   #main-menu{ display:none !important; }
+
+  /* desktop: logo visible, title left-aligned near logo */
+  .logo-link{ display:flex; }
+  .nav{ grid-template-columns:auto 1fr auto; }
+  .nav-title{ justify-self:start; text-align:left; margin-left:8px; }
 }
+
 @media (max-width:800px){
   .links{ display:none !important; }          /* hide desktop tabs on mobile */
   .nav-toggle{ display:inline-flex !important; }
   body.no-scroll{ overflow:hidden; }          /* lock page scroll when menu open */
+
+  /* mobile grid: hamburger | title | cart */
+  .logo-link{ display:none !important; }
+  .nav{ grid-template-columns:44px 1fr auto; column-gap:8px; }
+  .nav-toggle{ grid-column:1; justify-self:start; }
+  .nav-title{ grid-column:2; justify-self:center; text-align:center; margin:0; }
+  .nav-cart{ grid-column:3; justify-self:end; }
 }
 
 /* ============ Layout/content styles ============ */
-.container{max-width:1100px; margin:0 auto; padding:24px;}
+.container{max-width:1100px; margin:0 auto; padding:24px; padding-bottom:0;}
 .hero{padding:36px 0; text-align:center;}
 .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px;}
 .card{background:var(--card); border:2px solid var(--border); border-radius:8px; overflow:hidden; display:flex; flex-direction:column;}
@@ -116,7 +133,6 @@ a{color:inherit;text-decoration:none}
 .filters{display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;}
 .toggle{display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px; border:2px solid var(--border); cursor:pointer; background:var(--card);}
 .toggle.active{background:var(--accent); color:var(--invert-fg); border-color:var(--accent);}
-.footer{text-align:center; padding:20px; color:var(--muted); border-top:1px solid var(--border); margin-top:36px;}
 @media (max-width:800px){ .controls{grid-template-columns:1fr;} }
 
 /* ============ Background ============ */
@@ -128,7 +144,7 @@ body{
   body{
     background-repeat:repeat;
     background-position:top center;
-    background-size:800px auto; /* adjust to taste */
+    background-size:800px auto;
   }
 }
 
@@ -140,334 +156,54 @@ h1, h2{
   border:2px solid #000;
   clip-path:polygon(10% 0%,90% 0%,100% 10%,100% 90%,90% 100%,10% 100%,0% 90%,0% 10%);
 }
-/* --- FIX HAMBURGER STACKING + X --- */
 
-/* ==== BULLETPROOF HAMBURGER/X (iOS-safe) ==== */
-.nav-toggle{
-  /* visible only on mobile via your media query */
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  /* make a fixed icon box (no layout shift) */
-  width: 44px;          /* tap target */
-  height: 44px;
-  padding: 0;           /* important: no inner padding to offset bars */
-  border: 2px solid #000;
-  border-radius: 6px;
-  background: transparent;
+/* ============ HUMVEE hotspots ============ */
+.humvee-hotspots{ margin:1.5rem 0 2rem; display:grid; place-items:center; }
+.hotspot-container{ position:relative; width:min(1100px,95vw); }
+.humvee-img{ width:100%; height:auto; display:block; user-select:none; pointer-events:none; }
+.hotspot{
+  position:absolute;
+  width:clamp(20px,3.5vw,36px); height:clamp(20px,3.5vw,36px);
+  border-radius:50%; transform:translate(-50%,-50%);
+  background:rgba(220,0,0,.55);
+  outline:2px solid rgba(255,255,255,.7);
+  box-shadow:0 0 0 6px rgba(220,0,0,.18);
+  cursor:pointer; transition:transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
 }
-
-/* 3 bars drawn absolutely *inside the button* */
-.nav-toggle .bar{
-  position: absolute;
-  left: 50%;
-  width: 24px;
-  height: 2px;
-  background: #000;
-  border-radius: 1px;
-  transform: translateX(-50%);     /* center horizontally */
-  transform-origin: center center;  /* pivot in the middle */
-  transition: transform .18s ease, opacity .18s ease, top .18s ease;
-  will-change: transform, opacity, top;
-}
-
-/* closed positions (even spacing) */
-.nav-toggle .bar:nth-child(1){ top: 34%; }
-.nav-toggle .bar:nth-child(2){ top: 50%; }
-.nav-toggle .bar:nth-child(3){ top: 66%; }
-
-/* OPEN → perfect X centered */
-.nav-toggle[aria-expanded="true"] .bar{ top: 50%; }
-.nav-toggle[aria-expanded="true"] .bar:nth-child(1){
-  transform: translateX(-50%) rotate(45deg);
-}
-.nav-toggle[aria-expanded="true"] .bar:nth-child(2){
-  opacity: 0;
-}
-.nav-toggle[aria-expanded="true"] .bar:nth-child(3){
-  transform: translateX(-50%) rotate(-45deg);
-}
-/* ===== Hamburger: perfect spacing closed, perfect X open ===== */
-
-/* Closed state: 3 evenly spaced lines via flex */
-.nav-toggle{
-  display: inline-flex;               /* shown on mobile via your MQ */
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;             /* stack bars */
-  gap: 6px;                           /* even spacing */
-  width: 44px; height: 44px;          /* tap target */
-  padding: 0;                         /* avoid inner offsets */
-  border: 2px solid #000;
-  border-radius: 6px;
-  background: transparent;
-  position: relative;                 /* used when open */
-}
-
-.nav-toggle .bar{
-  width: 24px;
-  height: 2px;
-  background: #000;
-  border-radius: 1px;
-  position: static;                   /* flex children in CLOSED state */
-  transform: none;                    /* reset any prior transforms */
-  opacity: 1;
-  transition: transform .18s ease, opacity .18s ease;
-}
-
-/* Open state: overlap both visible bars at exact center and rotate */
-.nav-toggle[aria-expanded="true"]{
-  gap: 0;                             /* remove spacing while forming X */
-}
-
-.nav-toggle[aria-expanded="true"] .bar{
-  position: absolute;                 /* overlap all bars */
-  left: 50%;
-  top: 50%;
-  transform-origin: center center;
-}
-
-/* top bar */
-.nav-toggle[aria-expanded="true"] .bar:nth-child(1){
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-
-/* middle bar disappears */
-.nav-toggle[aria-expanded="true"] .bar:nth-child(2){
-  opacity: 0;
-  transform: translate(-50%, -50%);  /* keep centered while fading */
-}
-
-/* bottom bar */
-.nav-toggle[aria-expanded="true"] .bar:nth-child(3){
-  transform: translate(-50%, -50%) rotate(-45deg);
-}
-/* Image + hotspots */
-.humvee-hotspots {
-  margin: 1.5rem 0 2rem;
-  display: grid;
-  place-items: center;
-}
-.hotspot-container {
-  position: relative;
-  width: min(1100px, 95vw);
-}
-.humvee-img {
-  width: 100%;
-  height: auto;
-  display: block;
-  user-select: none;
-  pointer-events: none; /* image itself won't intercept clicks */
-}
-
-/* Red circular hotspots */
-.hotspot {
-  position: absolute;
-  width: clamp(20px, 3.5vw, 36px);
-  height: clamp(20px, 3.5vw, 36px);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(220, 0, 0, 0.55);
-  outline: 2px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 0 0 6px rgba(220,0,0,0.18);
-  cursor: pointer;
-  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
-}
-.hotspot:hover,
-.hotspot:focus-visible {
-  background: rgba(220, 0, 0, 0.85);
-  transform: translate(-50%, -50%) scale(1.08);
-  box-shadow: 0 0 0 10px rgba(220,0,0,0.22);
+.hotspot:hover,.hotspot:focus-visible{
+  background:rgba(220,0,0,.85);
+  transform:translate(-50%,-50%) scale(1.08);
+  box-shadow:0 0 0 10px rgba(220,0,0,.22);
 }
 
 /* Smooth anchor scrolling */
-html { scroll-behavior: smooth; }
+html { scroll-behavior:smooth; }
 
 /* Flash highlight on target card */
 @keyframes flash {
-  0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.0); }
-  30% { box-shadow: 0 0 0 8px rgba(255,0,0,0.20); }
-  60% { box-shadow: 0 0 0 0 rgba(255,0,0,0.0); }
-  100% { box-shadow: 0 0 0 0 rgba(255,0,0,0.0); }
+  0% { box-shadow:0 0 0 0 rgba(255,0,0,0); }
+  30%{ box-shadow:0 0 0 8px rgba(255,0,0,.20); }
+  60%{ box-shadow:0 0 0 0 rgba(255,0,0,0); }
+  100%{ box-shadow:0 0 0 0 rgba(255,0,0,0); }
 }
-.product-card.flash {
-  animation: flash 1500ms ease;
-}
-/* ================= NAV TITLE & POSITIONING (non-destructive overrides) ================= */
+.card.flash, .product-card.flash{ animation:flash 1500ms ease; }
 
-/* 1) Add a centered title on mobile, left on desktop.
-   HTML needed (already discussed):
-   <span class="nav-title">TACTICAL OFFROAD</span> inside .nav
-*/
-.nav-title{
-  font-family:'Black Ops One Local', sans-serif;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  color:#000;
-  white-space:nowrap;
-  line-height:1;
-  /* default desktop placement: we'll absolutely place it in the left area */
-  position:absolute;
-  top:50%;
-  transform:translateY(-50%);
-  left:72px;               /* sits just to the right of the 36px logo + padding */
-  font-size:18px;
-}
-
-/* Make .nav a positioned container so the absolute title anchors properly */
-.nav{ position:sticky; }
-
-/* Desktop: show logo, keep title on the left, links center (your existing layout). */
-@media (min-width:801px){
-  .logo-link{ display:flex; }
-  .nav-title{
-    display:inline-block;
-    left:72px;             /* adjust if your logo width changes */
-    font-size:18px;
-  }
-}
-
-/* Mobile: hamburger left, title centered, cart right, logo hidden */
-@media (max-width:800px){
-  .nav{
-    display:grid;
-    grid-template-columns:44px 1fr auto; /* hamburger | title | cart */
-    column-gap:8px;
-  }
-  .logo-link{ display:none !important; }  /* hide logo on mobile */
-  .nav-toggle{
-    grid-column:1;
-    justify-self:start;
-    display:inline-flex !important;
-  }
-  .nav-title{
-    position:static;                /* let grid position it */
-    grid-column:2;
-    justify-self:center;
-    align-self:center;
-    transform:none;
-    font-size:16px;
-  }
-  .nav-cart{ grid-column:3; justify-self:end; }
-}
-
-/* ================= BULLETPROOF HAMBURGER (spacing perfect, X perfect) ================= */
-/* These override earlier hamburger rules without removing them */
-
-.nav-toggle{
-  width:44px; height:44px; padding:0;
-  display:inline-flex; align-items:center; justify-content:center;
-  border:2px solid #000; border-radius:6px; background:transparent;
-  position:relative; /* anchor absolute bars on open */
-  gap:6px;           /* closed spacing */
-}
-
-.nav-toggle .bar{
-  width:24px; height:2px; background:#000; border-radius:1px;
-  transition:transform .18s ease, opacity .18s ease;
-}
-
-/* Open state → overlap at center & rotate into X */
-.nav-toggle[aria-expanded="true"]{ gap:0; }
-.nav-toggle[aria-expanded="true"] .bar{
-  position:absolute; left:50%; top:50%; transform-origin:center center;
-}
-.nav-toggle[aria-expanded="true"] .bar:nth-child(1){
-  transform:translate(-50%, -50%) rotate(45deg);
-}
-.nav-toggle[aria-expanded="true"] .bar:nth-child(2){
-  opacity:0; transform:translate(-50%, -50%);
-}
-.nav-toggle[aria-expanded="true"] .bar:nth-child(3){
-  transform:translate(-50%, -50%) rotate(-45deg);
-}
-
-/* ================= HOTSPOT FLASH: cover both .card and .product-card ================= */
-@keyframes flash {
-  0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.0); }
-  30% { box-shadow: 0 0 0 8px rgba(255,0,0,0.20); }
-  60% { box-shadow: 0 0 0 0 rgba(255,0,0,0.0); }
-  100% { box-shadow: 0 0 0 0 rgba(255,0,0,0.0); }
-}
-.card.flash,
-.product-card.flash{
-  animation: flash 1500ms ease;
-}
-/* --- Title base style --- */
-.nav-title{
-  font-weight: 900;
-  letter-spacing: 2px;
-  line-height: 1;
-}
-
-/* Desktop: show logo, title left-aligned */
-@media (min-width:801px){
-  .nav { grid-template-columns: auto 1fr auto; align-items: center; }
-  .logo-link{ display:flex; }
-  .nav-title{
-    grid-column:auto;        /* natural flow */
-    justify-self:start;      /* left on desktop */
-    text-align:left;
-    margin-left:8px;
-  }
-}
-
-/* Mobile: hide logo, 3-column grid → [hamburger | title (center) | cart] */
-@media (max-width:800px){
-  .logo-link{ display:none; }
-
-  .nav{
-    /* burger | title | cart */
-    grid-template-columns: 44px 1fr auto;
-    align-items: center;
-    padding: calc(12px + env(safe-area-inset-top,0)) 16px 12px 16px;
-  }
-
-  .nav-toggle{
-    grid-column: 1;
-    justify-self: start;
-    display: inline-flex !important;
-  }
-
-  .nav-title{
-    grid-column: 2;
-    justify-self: center;    /* centered horizontally */
-    text-align: center;
-    margin: 0;               /* remove stray margins */
-  }
-
-  .nav-cart{
-    grid-column: 3;
-    justify-self: end;
-  }
-
-  .links{ display:none !important; }  /* already in your CSS, just reaffirming */
-}
-/* ===== FULL-BLEED FOOTER ===== */
+/* ===== FULL-BLEED BLACK FOOTER ===== */
 .footer{
   /* full width across viewport */
-  width: 100vw;
-  margin-left: 50%;
-  transform: translateX(-50%);
+  width:100vw;
+  margin-left:50%;
+  transform:translateX(-50%);
 
   background:#000;
-  color:#cfcfcf;                /* light gray text */
+  color:#cfcfcf;
   text-align:center;
 
-  padding: 18px 24px calc(18px + env(safe-area-inset-bottom,0));
-  border-top:2px solid #d3d4d6;   /* gray borders */
+  padding:20px 24px calc(20px + env(safe-area-inset-bottom,0));
+  border-top:2px solid #d3d4d6;
   border-bottom:2px solid #d3d4d6;
 
-  /* ensure no card/bevel styles leak in */
-  clip-path:none; 
-  border-radius:0;
+  clip-path:none; border-radius:0;
 }
-
-/* footer links (if any) */
-.footer a{
-  color:#e0e0e0;
-  text-decoration:none;
-}
+.footer a{ color:#e0e0e0; text-decoration:none; }
 .footer a:hover{ color:#ffffff; }
