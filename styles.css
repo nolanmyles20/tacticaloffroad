@@ -214,3 +214,31 @@ html { scroll-behavior:smooth; }
 }
 .footer a{ color:#e0e0e0; text-decoration:none; }
 .footer a:hover{ color:#ffffff; }
+/* Prevent giant mobile title from overflowing the screen */
+@media (max-width:800px){
+  .nav-title{
+    /* full row, centered (keeps your current layout) */
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+    text-align: center;
+    margin: 0;
+
+    /* Big but responsive — clamps to viewport width */
+    font-size: clamp(24px, 8.5vw, 42px);
+
+    /* Loosen letter-spacing on tiny screens so it fits */
+    letter-spacing: clamp(0.04em, 1.2vw, 0.12em);
+
+    /* Make sure we never spill horizontally */
+    max-width: 100%;
+    padding-inline: 8px;          /* tiny breathing room */
+    box-sizing: border-box;
+    overflow: hidden;              /* safety net */
+    text-overflow: ellipsis;       /* … if it ever gets too tight */
+    white-space: nowrap;           /* keep it on one line */
+  }
+}
+
+/* iOS font autosizing can cause surprises; keep it stable */
+html { -webkit-text-size-adjust: 100%; }
