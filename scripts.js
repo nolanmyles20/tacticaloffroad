@@ -1,30 +1,34 @@
 // ================ CONFIG =================
 const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // change if needed
 let cartWin = null; // single, reusable cart tab
-let localCartCount = Number(localStorage.getItem('localCartCount') ?? 0) || 0;
+
+// store only last confirmed count (no optimistic math)
+let lastConfirmedCount = Number(localStorage.getItem('lastConfirmedCount') ?? 0) || 0;
 
 // ================ BADGE ==================
 function setBadge(n) {
   const el = document.getElementById('cart-count');
-  if (el) el.textContent = String(n);
+  if (el) el.textContent = String(Number.isFinite(n) ? n : 0);
 }
-setBadge(localCartCount);
+setBadge(lastConfirmedCount);
 
-// Try to pull the real count from Shopify (works best after user has opened cart at least once)
+// Confirmed read from Shopify (never optimistic)
 async function updateCartCount() {
   try {
     const res = await fetch(`https://${SHOPIFY.shop}/cart.js`, {
       credentials: 'include',
       cache: 'no-store',
-      mode: 'cors'
+      mode: 'cors',
+      referrerPolicy: 'no-referrer-when-downgrade'
     });
     if (!res.ok) return;
     const data = await res.json();
-    localCartCount = Number(data.item_count) || 0;
-    localStorage.setItem('localCartCount', String(localCartCount));
-    setBadge(localCartCount);
-  } catch (_e) {
-    // cross-origin or first-visit will often fail; keep optimistic count
+    const n = Number(data?.item_count) || 0;
+    lastConfirmedCount = n;
+    localStorage.setItem('lastConfirmedCount', String(n));
+    setBadge(n);
+  } catch {
+    // first-visit/mobile cookie edge cases—leave badge as-is
   }
 }
 
@@ -38,22 +42,21 @@ function openCartTab(url = `https://${SHOPIFY.shop}/cart`) {
   try { w.focus(); } catch {}
   cartWin = w;
 
-  // after a short delay, Shopify will have set cookies -> try to sync real count
+  // after opening a top-level Shopify page, cookies exist → resync a few times
   setTimeout(updateCartCount, 1500);
   setTimeout(updateCartCount, 4000);
+  setTimeout(updateCartCount, 8000);
 }
 
 // Append an item by navigating the named cart tab to cart/add (no CORS issues)
+// IMPORTANT: no optimistic badge bump here.
 function addViaUrl(variantId, qty) {
   const q = Math.max(1, Number(qty) || 1);
   const url = `https://${SHOPIFY.shop}/cart/add?id=${encodeURIComponent(variantId)}&quantity=${q}`;
-
-  // optimistic local badge bump so user sees feedback immediately
-  localCartCount += q;
-  localStorage.setItem('localCartCount', String(localCartCount));
-  setBadge(localCartCount);
-
   openCartTab(url);
+  // resync shortly after add
+  setTimeout(updateCartCount, 2500);
+  setTimeout(updateCartCount, 6000);
 }
 
 // ================ MOBILE NAV HELPERS ================
@@ -147,9 +150,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // initial attempts to sync cart count
+  // initial and periodic confirmed counts
   updateCartCount();
-  setInterval(updateCartCount, 10000);
+  setInterval(updateCartCount, 15000);
+
+  // also resync when returning to tab / focusing window
+  window.addEventListener('focus', updateCartCount);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') updateCartCount();
+  });
 
   // filters + products
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
