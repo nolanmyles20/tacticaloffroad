@@ -1,21 +1,51 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TACTICAL OFFROAD — HOME</title>
-<link rel="icon" type="image/png" href="assets/favicon_white.png">
-<link rel="stylesheet" href="styles.css">
-<script defer src="scripts.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TACTICAL OFFROAD — HOME</title>
+  <link rel="icon" type="image/png" href="assets/favicon_white.png">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="scripts.js"></script>
 </head>
 
 <body>
-<nav class="nav">
-  <a href="/" class="logo-link">
-    <img src="assets/logo.svg" alt="TACTICAL OFFROAD" class="logo">
-  </a>
-  <!-- DESKTOP links (shown on >=801px; hidden on mobile via CSS) -->
-  <div class="links">
+  <nav class="nav">
+    <!-- Logo (shown on desktop, hidden on mobile via CSS) -->
+    <a href="/" class="logo-link" aria-label="TACTICAL OFFROAD — Home">
+      <img src="assets/logo.svg" alt="" class="logo">
+    </a>
+
+    <!-- Site Title (centered on mobile, left on desktop via CSS overrides) -->
+    <span class="nav-title">TACTICAL OFFROAD</span>
+
+    <!-- Mobile toggle (hidden on desktop via CSS) -->
+    <button class="nav-toggle" aria-expanded="false" aria-controls="main-menu" aria-label="Toggle menu">
+      <span class="bar" aria-hidden="true"></span>
+      <span class="bar" aria-hidden="true"></span>
+      <span class="bar" aria-hidden="true"></span>
+      <span class="sr-only">Menu</span>
+    </button>
+
+    <!-- DESKTOP links (shown on ≥801px; hidden on mobile via CSS) -->
+    <div class="links" role="navigation" aria-label="Primary">
+      <a class="tab nav-tab" href="/">HOME</a>
+      <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
+      <a class="tab nav-tab" href="/jeep.html">JEEP</a>
+      <a class="tab nav-tab" href="/ar15.html">AR-15</a>
+      <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
+      <a class="tab nav-tab" href="/contact.html">CONTACT</a>
+    </div>
+
+    <!-- Cart (always visible) -->
+    <a id="cart-link" class="nav-cart" data-cart-link target="SHOPIFY_CART" aria-label="Open cart">
+      <img src="assets/cart-icon.svg" class="cart-icon" alt="">
+      CART <span id="cart-count" class="cart-count">0</span>
+    </a>
+  </nav>
+
+  <!-- MOBILE-only menu (don’t use hidden attr; CSS/JS toggles .is-open) -->
+  <div id="main-menu" class="menu" role="navigation" aria-label="Mobile">
     <a class="tab nav-tab" href="/">HOME</a>
     <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
     <a class="tab nav-tab" href="/jeep.html">JEEP</a>
@@ -24,45 +54,20 @@
     <a class="tab nav-tab" href="/contact.html">CONTACT</a>
   </div>
 
-  <!-- Mobile toggle (hidden on desktop via CSS) -->
-  <button class="nav-toggle" aria-expanded="false" aria-controls="main-menu">
-    <span class="bar"></span>
-    <span class="bar"></span>
-    <span class="bar"></span>
-    <span class="sr-only">Menu</span>
-  </button>
+  <main class="container">
+    <section class="hero">
+      <h1>TACTICAL OFFROAD</h1>
+      <p class="badge">RUGGED AFTERMARKET PARTS FOR HUMVEE • JEEP • AR-15 • CROSS-KARTS</p>
+    </section>
 
-  <!-- Cart (always visible) -->
-  <a id="cart-link" class="nav-cart" data-cart-link target="SHOPIFY_CART">
-    <img src="assets/cart-icon.svg" class="cart-icon" alt="Cart">
-    CART <span id="cart-count" class="cart-count">0</span>
-  </a>
-</nav>
+    <section>
+      <h2>FEATURED</h2>
+      <div id="featured-grid" class="grid"></div>
+    </section>
+  </main>
 
-<!-- MOBILE-only menu (hidden on desktop via CSS; toggled open with .is-open) -->
-<div id="main-menu" class="menu" hidden>
-  <a class="tab nav-tab" href="/">HOME</a>
-  <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
-  <a class="tab nav-tab" href="/jeep.html">JEEP</a>
-  <a class="tab nav-tab" href="/ar15.html">AR-15</a>
-  <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
-  <a class="tab nav-tab" href="/contact.html">CONTACT</a>
-</div>
-
-<main class="container">
-  <section class="hero">
-    <h1>TACTICAL OFFROAD</h1>
-    <p class="badge">RUGGED AFTERMARKET PARTS FOR HUMVEE • JEEP • AR-15 • CROSS-KARTS</p>
-  </section>
-
-  <section>
-    <h2>FEATURED</h2>
-    <div id="featured-grid" class="grid"></div>
-  </section>
-</main>
-
-<footer class="footer">
-  © 2025 TACTICAL OFFROAD — HUMVEE • JEEP • AR-15 • CROSS-KARTS
-</footer>
+  <footer class="footer">
+    © 2025 TACTICAL OFFROAD — HUMVEE • JEEP • AR-15 • CROSS-KARTS
+  </footer>
 </body>
 </html>
