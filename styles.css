@@ -445,3 +445,32 @@ html { scroll-behavior: smooth; }
 
   .links{ display:none !important; }  /* already in your CSS, just reaffirming */
 }
+/* =============================
+   FULL-WIDTH BOTTOM HERO (BLACK)
+   ============================= */
+main.container > .hero:last-of-type {
+  /* break out of .container’s max-width */
+  width: 100vw;
+  margin-left: 50%;
+  transform: translateX(-50%);
+
+  background: #000;
+  padding: 36px 0;
+
+  /* top + bottom gray borders */
+  border-top: 2px solid #d3d4d6;
+  border-bottom: 2px solid #d3d4d6;
+  border-left: none;
+  border-right: none;
+
+  text-align: center;
+}
+
+/* remove bevel borders for headings inside this section */
+main.container > .hero:last-of-type h1,
+main.container > .hero:last-of-type h2 {
+  background: none;
+  border: none;
+  color: #fff;
+  clip-path: none;
+}
