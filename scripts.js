@@ -316,3 +316,26 @@ function updateUrlFromFilters() {
   const newUrl = window.location.pathname + (tags.length ? ('?' + params.toString()) : '');
   history.replaceState({}, '', newUrl);
 }
+document.addEventListener('click', (e) => {
+  const spot = e.target.closest('.hotspot');
+  if (!spot) return;
+
+  const sel = spot.getAttribute('data-target');
+  if (!sel) return;
+
+  const target = document.querySelector(sel);
+  if (!target) {
+    console.warn('Hotspot target not found:', sel);
+    return;
+  }
+
+  // If you need to open/expand filters first, you can hook in here.
+
+  // Scroll into view (smooth handled by CSS)
+  target.scrollIntoView({ block: 'center' });
+
+  // Flash the product card
+  target.classList.remove('flash');
+  void target.offsetWidth; // restart animation
+  target.classList.add('flash');
+});
