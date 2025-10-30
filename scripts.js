@@ -7,6 +7,9 @@ const CART_NAME = 'SHOPIFY_CART';
 
 let cartWin = null; // single named window/tab ref
 
+// Pending scroll target if hotspot clicked before products render
+let __pendingScrollSel = null; // NEW
+
 // ============== BADGE (trust Shopify only) ==============
 function setBadge(n) {
   const el = document.getElementById('cart-count');
@@ -37,7 +40,6 @@ function navCart(url) {
 }
 
 // ============== ADD TO CART (POST via hidden form targeted to SHOPIFY_CART) ==============
-// This pattern is the most reliable across Safari/iOS/Android/desktop.
 function postCartAdd(variantId, qty) {
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
@@ -65,8 +67,8 @@ function postCartAdd(variantId, qty) {
   form.appendChild(returnTo);
 
   document.body.appendChild(form);
-  form.submit();          // Navigate the named window to /cart (after add)
-  form.remove();          // Clean up
+  form.submit();
+  form.remove();
 
   // Pull the real count after Shopify processes the add
   setTimeout(updateCartCount, 1200);
@@ -95,13 +97,28 @@ function closeMobileMenu(toggle, menu) {
   document.body.classList.remove('no-scroll');
 }
 
+// ============== SMART SCROLL (hotspots) ==============
+// Scroll with offset for fixed nav, always on the window (robust)  // NEW
+function scrollToEl(el) {
+  if (!el) return;
+  const navHVar = getComputedStyle(document.documentElement).getPropertyValue('--nav-h').trim();
+  const navH = parseInt(navHVar || '0', 10) || 0;
+  const extra = 20; // small breathing room
+  const top = el.getBoundingClientRect().top + window.pageYOffset - (navH + extra);
+  window.scrollTo({ top, behavior: 'smooth' });
+  // flash animation (if your CSS adds .flash)
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
+
 // ============== BOOT ==============
 document.addEventListener('DOMContentLoaded', () => {
   // Make all cart links reuse the SAME named tab
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
     el.setAttribute('href', CART);
-    el.setAttribute('target', CART_NAME); // reuse name (not _blank)
-    el.removeAttribute('rel');            // allow reuse of named window
+    el.setAttribute('target', CART_NAME);
+    el.removeAttribute('rel');
     el.addEventListener('click', (e) => {
       e.preventDefault();
       navCart(CART);
@@ -168,13 +185,20 @@ async function loadProducts() {
   }
 
   wireCards(items);
+
+  // If a hotspot was clicked before cards existed, finish the scroll now   // NEW
+  if (__pendingScrollSel) {
+    const el = document.querySelector(__pendingScrollSel);
+    if (el) scrollToEl(el);
+    __pendingScrollSel = null;
+  }
 }
 
 // ============== RENDER ==============
 function productCard(p) {
   if (p.simple) {
     return `
-    <div class="card" data-id="${p.id}">
+    <div class="card" data-id="${p.id}" id="product-${p.id}"> <!-- id added -->  <!-- NEW -->
       <img src="${p.image}" alt="${p.title}">
       <div class="content">
         <div class="badge">${p.platforms.join(' • ')}</div>
@@ -205,7 +229,7 @@ function productCard(p) {
                ? Object.keys(vmap[o1][o2]) : [];
 
   return `
-  <div class="card" data-id="${p.id}">
+  <div class="card" data-id="${p.id}" id="product-${p.id}"> <!-- id added -->   <!-- NEW -->
     <img src="${p.image}" alt="${p.title}">
     <div class="content">
       <div class="badge">${p.platforms.join(' • ')}</div>
@@ -329,14 +353,18 @@ function updateUrlFromFilters() {
   history.replaceState({}, '', newUrl);
 }
 
-// (Optional) hotspot demo from your snippet
+// ============== HOTSPOT HANDLER (robust) ==============  // CHANGED
 document.addEventListener('click', (e) => {
   const spot = e.target.closest('.hotspot');
   if (!spot) return;
   const sel = spot.getAttribute('data-target');
   if (!sel) return;
+
   const target = document.querySelector(sel);
-  if (!target) { console.warn('Hotspot target not found:', sel); return; }
-  target.scrollIntoView({ block: 'center' });
-  target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
+  if (target) {
+    scrollToEl(target);
+  } else {
+    // If not rendered yet, remember and scroll after loadProducts completes
+    __pendingScrollSel = sel;
+  }
 });
