@@ -1,6 +1,7 @@
 :root{
   --bg:#e5e6e7; --fg:#0b0b0b; --muted:#6b6b6b; --border:#bcbec0;
   --card:#ffffff; --accent:#7d7f82; --invert-bg:#0b0b0b; --invert-fg:#e5e6e7;
+  --nav-h:64px; /* JS updates this at runtime */
 }
 
 @font-face{
@@ -20,29 +21,85 @@ html, body {
 img{max-width:100%;display:block}
 a{color:inherit;text-decoration:none}
 
-/* --- Top bar layout --- */
+/* ================= NAV ================= */
 .nav{
   position:sticky; top:0; z-index:10;
-  display:flex; align-items:center; gap:12px;
+  display:grid; grid-template-columns:auto 1fr auto; /* logo | links/hamburger | cart */
+  align-items:center; gap:12px;
   padding:calc(12px + env(safe-area-inset-top,0)) 18px 12px 18px;
   background:#d3d4d6; border-bottom:1px solid var(--border);
 }
 .logo-link{display:flex; align-items:center; margin-right:auto;}
 .logo{height:36px; width:auto; display:block;}
 
-/* Desktop inline links (original) */
-.links{display:flex; gap:8px; flex-wrap:wrap;}
+/* Desktop inline links */
+.links{
+  display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin:0 auto;
+}
 
-.nav-cart{display:flex; align-items:center; gap:8px; font-weight:700;}
+/* Cart pinned right */
+.nav-cart{display:flex; align-items:center; gap:8px; font-weight:700; justify-self:end;}
 .cart-icon{width:20px; height:20px; display:inline-block; filter:brightness(0); transition:transform .2s;}
 .nav-cart:hover .cart-icon{transform:scale(1.1);}
 
+/* Tabs */
 .tab{
   border:2px solid #000; padding:6px 14px; margin:0 4px; transition:.15s;
   clip-path:polygon(10% 0%,90% 0%,100% 10%,100% 90%,90% 100%,10% 100%,0% 90%,0% 10%);
 }
 .tab:hover{background:var(--invert-bg); color:var(--invert-fg);}
 
+/* ============ Hamburger ============ */
+.nav-toggle{
+  border:2px solid #000; background:transparent; border-radius:6px; margin-left:8px;
+  min-width:44px; min-height:44px;
+  display:none; /* hidden by default (desktop) */
+  align-items:center; justify-content:center;
+  grid-column:2; justify-self:center; /* center column on mobile */
+}
+.nav-toggle:focus{outline:2px solid #000; outline-offset:2px;}
+
+.nav-toggle .bar{
+  width:24px; height:2px; background:#000; border-radius:1px; display:block;
+  transform-origin:center; transition:transform .2s ease, opacity .2s ease;
+}
+.nav-toggle .bar + .bar{ margin-top:5px; }
+
+/* X animation */
+.nav-toggle[aria-expanded="true"] .bar:nth-child(1){ transform: translateY(7px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .bar:nth-child(2){ opacity:0; }
+.nav-toggle[aria-expanded="true"] .bar:nth-child(3){ transform: translateY(-7px) rotate(-45deg); }
+
+.sr-only{position:absolute; left:-9999px;}
+
+/* ============ Mobile menu (fixed overlay) ============ */
+#main-menu{
+  display:none; /* closed */
+  position:fixed; top:var(--nav-h); left:0; right:0; z-index:9;
+  background:#e1e2e4; border-bottom:1px solid var(--border);
+  max-height:calc(100vh - var(--nav-h)); overflow-y:auto;
+  padding:10px 18px 16px;
+}
+#main-menu.is-open{
+  display:grid !important; grid-template-columns:1fr; /* force vertical stack */
+}
+#main-menu .tab{
+  margin:0; width:100%; text-align:center; padding:12px 14px;
+}
+
+/* ===== Desktop vs Mobile visibility ===== */
+@media (min-width:801px){
+  .links{ display:flex !important; }
+  .nav-toggle{ display:none !important; }
+  #main-menu{ display:none !important; }
+}
+@media (max-width:800px){
+  .links{ display:none !important; }          /* hide desktop tabs on mobile */
+  .nav-toggle{ display:inline-flex !important; }
+  body.no-scroll{ overflow:hidden; }          /* lock page scroll when menu open */
+}
+
+/* ============ Layout/content styles ============ */
 .container{max-width:1100px; margin:0 auto; padding:24px;}
 .hero{padding:36px 0; text-align:center;}
 .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px;}
@@ -62,212 +119,24 @@ a{color:inherit;text-decoration:none}
 .footer{text-align:center; padding:20px; color:var(--muted); border-top:1px solid var(--border); margin-top:36px;}
 @media (max-width:800px){ .controls{grid-template-columns:1fr;} }
 
-/* Background */
+/* ============ Background ============ */
 body{
   background-image:url("assets/diamond-plate.png");
   background-size:cover; background-position:center; background-repeat:no-repeat; background-attachment:scroll;
 }
-/* Mobile tiling */
 @media (max-width:800px){
   body{
     background-repeat:repeat;
     background-position:top center;
-    background-size:800px auto;   /* adjust to taste */
+    background-size:800px auto; /* adjust to taste */
   }
 }
 
-/* --- Hamburger --- */
-.nav-toggle{
-  display:none; border:2px solid #000; background:transparent;
-  padding:8px 10px; border-radius:6px; margin-left:8px;
+/* ============ Headings (beveled) ============ */
+h1, h2{
+  display:inline-block;
+  background:#d3d4d6; color:#000;
+  padding:10px 18px; margin:12px 0;
+  border:2px solid #000;
+  clip-path:polygon(10% 0%,90% 0%,100% 10%,100% 90%,90% 100%,10% 100%,0% 90%,0% 10%);
 }
-.nav-toggle .bar{display:block; width:22px; height:2px; background:#000; margin:5px 0;}
-.nav-toggle:focus{outline:2px solid #000; outline-offset:2px;}
-.sr-only{position:absolute; left:-9999px;}
-
-/* --- Collapsible mobile menu panel --- */
-/* Hidden by default; only used on mobile */
-.menu{
-  display:none;
-  padding:10px 18px 16px;
-  background:#e1e2e4;
-  border-bottom:1px solid var(--border);
-  max-height:0; overflow:hidden;
-  transition:max-height .25s ease;
-}
-.menu[hidden]{display:none;} /* keeps it out of a11y tree until opened */
-
-/* Desktop: show original links, hide hamburger & mobile menu */
-@media (min-width:801px){
-  .links{display:flex;}
-  .nav-toggle{display:none;}
-  .menu{display:none;}
-}
-
-/* Mobile: hide original links, show hamburger and slide-down menu */
-@media (max-width:800px){
-  .links{display:none;}
-  .nav-toggle{display:inline-flex;}
-
-  .menu{
-    display:block;
-    grid-template-columns:1fr;
-    max-height:0;
-    overflow:hidden;
-  }
-
-  .menu.is-open{
-    max-height:600px;
-    display:grid !important;
-    grid-template-columns:1fr;
-  }
-
-  .menu .tab{
-    margin:0;
-    width:100%;
-    text-align:left;
-    padding:10px 14px;
-  }
-}
-/* ===== NAV LAYOUT: center tabs, cart always right ===== */
-.nav{
-  display: grid;
-  grid-template-columns: auto 1fr auto; /* logo | links/hamburger | cart */
-  align-items: center;
-}
-
-/* Desktop: show original inline tabs, centered */
-.links{
-  display: flex;
-  justify-content: center;   /* center the tabs */
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 0 auto;            /* extra safety for centering */
-}
-
-/* Cart anchored to the right */
-.nav-cart{
-  justify-self: end;
-}
-
-/* Mobile: hamburger centered in the top bar */
-@media (max-width: 800px){
-  .links{ display:none; }          /* hide desktop links */
-  .nav-toggle{
-    display:inline-flex;
-    grid-column: 2;                /* center column */
-    justify-self: center;
-  }
-}
-
-/* If you want the MOBILE slide-down menu's tabs centered too, keep this: */
-@media (max-width: 800px){
-  .menu{
-    display:block;
-    grid-template-columns: 1fr;
-    max-height:0; overflow:hidden;
-  }
-  .menu.is-open{
-    max-height:600px;
-    display:grid !important;
-    grid-template-columns: 1fr;
-  }
-  .menu .tab{
-    margin:0;
-    width:100%;
-    text-align:center;  /* center text inside each button */
-    padding:10px 14px;
-  }
-}
-.hero h1 {
-  display: inline-block;          /* shrink-wrap to text */
-  background: #d3d4d6;            /* medium gray to match navbar */
-  color: #000;                    /* black text */
-  padding: 10px 18px;             /* spacing around text */
-  border: 2px solid #000;         /* black outline */
-  border-radius: 6px;             /* subtle rounding */
-}
-h1,
-h2 {
-  display: inline-block;
-  background: #d3d4d6;           /* gray like navbar */
-  color: #000;
-  padding: 10px 18px;
-  border: 2px solid #000;
-  margin: 12px 0;
-  clip-path: polygon(
-    10% 0%,
-    90% 0%,
-    100% 10%,
-    100% 90%,
-    90% 100%,
-    10% 100%,
-    0% 90%,
-    0% 10%
-  );
-}
-/* ===== Mobile menu as fixed overlay under sticky nav ===== */
-:root { --nav-h: 64px; } /* will be updated by JS at runtime */
-
-@media (max-width:800px){
-  /* Lock page scroll when menu is open */
-  body.no-scroll { overflow: hidden; }
-
-  /* Make the menu fixed and always visible under the sticky nav when open */
-  .menu{
-    /* previously display:block + animated max-height; replace with overlay */
-    position: fixed;
-    top: var(--nav-h);
-    left: 0;
-    right: 0;
-    z-index: 9;
-    background: #e1e2e4;
-    border-bottom: 1px solid var(--border);
-
-    /* scrolling panel sized to viewport */
-    max-height: calc(100vh - var(--nav-h));
-    overflow-y: auto;
-    display: none; /* hidden until open */
-    padding: 10px 18px 16px;
-  }
-  .menu.is-open{
-    display: block !important; /* force visible when toggled */
-  }
-
-  /* Full-width stacked tabs */
-  .menu .tab{
-    margin: 0;
-    width: 100%;
-    text-align: center;
-    padding: 12px 14px;
-  }
-}
-
-/* ===== Hamburger: classic 3 lines + X animation ===== */
-.nav-toggle{
-  display: none; /* desktop hidden; your media query shows it on mobile */
-  border: 2px solid #000;
-  background: transparent;
-  padding: 8px 10px;
-  border-radius: 6px;
-  margin-left: 8px;
-
-  /* bigger tap target */
-  min-width: 44px; min-height: 44px;
-  display: inline-flex; align-items: center; justify-content: center;
-}
-
-.nav-toggle .bar{
-  display: block;
-  width: 24px;
-  height: 2px;
-  background: #000;
-  margin: 4px 0;
-  transition: transform .2s ease, opacity .2s ease, width .2s ease;
-}
-
-/* Turn into X when menu is open (using [aria-expanded="true"]) */
-.nav-toggle[aria-expanded="true"] .bar:nth-child(1){ transform: translateY(6px) rotate(45deg); }
-.nav-toggle[aria-expanded="true"] .bar:nth-child(2){ opacity: 0; }
-.nav-toggle[aria-expanded="true"] .bar:nth-child(3){ transform: translateY(-6px) rotate(-45deg); }
-
