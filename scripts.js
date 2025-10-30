@@ -1,4 +1,4 @@
-<script>
+
 // ============== CONFIG ==============
 const SHOPIFY   = { shop: 'tacticaloffroad.myshopify.com' };
 const CART      = `https://${SHOPIFY.shop}/cart`;
