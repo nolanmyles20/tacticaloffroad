@@ -6,33 +6,29 @@ const CART_JS    = `https://${SHOPIFY.shop}/cart.js`;
 const CART_ADD   = `https://${SHOPIFY.shop}/cart/add`;
 const CART_NAME  = 'SHOPIFY_CART';
 
-// Storefront (for resilient badge fallback)
+// Storefront (used to keep a *reliable* badge, independent of cookies)
 const SF_ENDPOINT = `https://${SHOPIFY.shop}/api/2025-01/graphql.json`;
 const SF_TOKEN    = '7f1d57625124831f8f9c47a088e48fb8'; // Storefront Access Token
 
-// (optional) set to true while debugging
 const DEBUG = false;
 
 
-// ================= BADGE HELPERS =================
+// ================= BADGE =================
 function setBadge(n) {
   const el = document.getElementById('cart-count');
   if (el) el.textContent = String(n ?? 0);
 }
 
-// Online Store (authoritative for the cart you show users)
 async function getCountFromCartJs() {
   try {
     const r = await fetch(CART_JS, { credentials: 'include', cache: 'no-store', mode: 'cors' });
     if (!r.ok) return 0;
     const j = await r.json();
     return Number(j.item_count) || 0;
-  } catch {
-    return 0;
-  }
+  } catch { return 0; }
 }
 
-// -------- Storefront fallback (best-effort) --------
+// ---- Storefront helpers (for reliable badge) ----
 async function sfFetch(query, variables = {}) {
   const r = await fetch(SF_ENDPOINT, {
     method: 'POST',
@@ -45,22 +41,37 @@ async function sfFetch(query, variables = {}) {
     mode: 'cors'
   });
   const j = await r.json();
-  if (j.errors) throw j.errors;
+  if (j.errors) { if (DEBUG) console.warn('SF errors', j.errors); throw j.errors; }
   return j.data;
 }
 
 async function ensureCart() {
   let id = localStorage.getItem('sf_cartId');
   if (id) return id;
-
   const data = await sfFetch(`
-    mutation CreateCart {
-      cartCreate { cart { id } }
-    }
+    mutation CreateCart { cartCreate { cart { id } } }
   `);
   id = data?.cartCreate?.cart?.id || '';
   if (id) localStorage.setItem('sf_cartId', id);
   return id;
+}
+
+function variantNumericToGid(numericId) {
+  return `gid://shopify/ProductVariant/${String(numericId)}`;
+}
+
+async function sfAddLine(variantId, qty) {
+  try {
+    const cartId = await ensureCart();
+    const merchandiseId = variantNumericToGid(variantId);
+    await sfFetch(`
+      mutation AddLines($cartId: ID!, $lines: [CartLineInput!]!) {
+        cartLinesAdd(cartId: $cartId, lines: $lines) { cart { totalQuantity } }
+      }
+    `, { cartId, lines: [{ merchandiseId, quantity: Math.max(1, Number(qty)||1) }] });
+  } catch (e) {
+    if (DEBUG) console.warn('sfAddLine failed', e);
+  }
 }
 
 async function getCountFromStorefront() {
@@ -68,22 +79,15 @@ async function getCountFromStorefront() {
     const id = await ensureCart();
     if (!id) return 0;
     const data = await sfFetch(`
-      query GetCart($id: ID!) {
-        cart(id: $id) { totalQuantity }
-      }
+      query GetCart($id: ID!) { cart(id: $id) { totalQuantity } }
     `, { id });
     return Number(data?.cart?.totalQuantity || 0);
-  } catch {
-    return 0;
-  }
+  } catch { return 0; }
 }
 
-// Use whichever is higher to cover ITP/cookie-block edge cases
+// Prefer Storefront (we mirror adds there), but still read /cart.js if available.
 async function refreshBadge() {
-  const [sfQty, jsQty] = await Promise.all([
-    getCountFromStorefront(),
-    getCountFromCartJs()
-  ]);
+  const [sfQty, jsQty] = await Promise.all([getCountFromStorefront(), getCountFromCartJs()]);
   const qty = Math.max(sfQty, jsQty);
   if (DEBUG) console.log('[badge]', { sfQty, jsQty, chosen: qty });
   setBadge(qty);
@@ -91,45 +95,45 @@ async function refreshBadge() {
 
 
 // ================= ONE NAMED CART TAB, ALWAYS =================
-// Click an <a> with target="SHOPIFY_CART" so the browser *reuses* that tab.
 function openInCartTab(url) {
   const a = document.createElement('a');
   a.href = url;
-  a.target = CART_NAME;        // reuse named tab
-  a.rel = 'noreferrer';        // avoid opener side-effects
+  a.target = CART_NAME;   // reuse named tab
+  a.rel = 'noreferrer';
   a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
   a.remove();
 }
 
-// Prime cart tab (loads /cart), then we can navigate it again for adds.
 function primeCartTab() {
   openInCartTab(CART);
 }
 
-// Add a single line via GET, then show /cart (return_to=/cart) with a cache-buster.
+// Add to the Online Store cart AND mirror to Storefront (for the badge).
 function addLineGET(variantId, qty) {
+  // Mirror to Storefront first (fire-and-forget)
+  sfAddLine(variantId, qty);
+
+  // Then navigate the named cart tab to /cart/add (this is the cart users see)
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
   const url = `${CART_ADD}?id=${encodeURIComponent(id)}&quantity=${q}&return_to=%2Fcart&_=${Date.now()}`;
-  if (DEBUG) console.log('[cart] add variant', id, 'qty', q, '→', url);
   openInCartTab(url);
 
-  // Sync badge a few times after Shopify processes
+  // Update badge
   setTimeout(refreshBadge, 1200);
   setTimeout(refreshBadge, 3000);
   setTimeout(refreshBadge, 6000);
 }
 
-// Add two items serially (e.g., base + powdercoat).
 function addTwoSequentially(v1, q1, v2, q2) {
   addLineGET(v1, q1);
-  setTimeout(() => addLineGET(v2, q2), 500);  // small spacing for mobile/Safari
+  setTimeout(() => addLineGET(v2, q2), 500);
 }
 
 
-// ================= MOBILE NAV HELPERS =================
+// ================= MOBILE NAV & SCROLL =================
 function setNavHeightVar() {
   const nav = document.querySelector('.nav');
   if (!nav) return;
@@ -150,7 +154,6 @@ function closeMobileMenu(toggle, menu) {
   document.body.classList.remove('no-scroll');
 }
 
-// Smooth scroll helper for hotspots (with sticky nav offset)
 function scrollToEl(el) {
   if (!el) return;
   const navHVar = getComputedStyle(document.documentElement).getPropertyValue('--nav-h').trim();
@@ -164,14 +167,13 @@ function scrollToEl(el) {
 
 // ================= BOOT =================
 document.addEventListener('DOMContentLoaded', async () => {
-  // Ensure a Storefront cart exists before first badge read
-  try { await ensureCart(); } catch (e) { if (DEBUG) console.warn('ensureCart failed', e); }
+  try { await ensureCart(); } catch {}
 
-  // Make every cart link reuse the SAME named tab
+  // Cart links reuse the SAME named tab
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
     el.setAttribute('href', CART);
-    el.setAttribute('target', CART_NAME);   // reuse; NOT _blank
-    el.removeAttribute('rel');              // allow name reuse
+    el.setAttribute('target', CART_NAME);
+    el.removeAttribute('rel');
     el.addEventListener('click', () => {
       setTimeout(refreshBadge, 1200);
       setTimeout(refreshBadge, 3000);
@@ -204,7 +206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     mq.addEventListener?.('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
   }
 
-  // First badge + keep in sync (also when user returns focus)
+  // Badge lifecycle
   await refreshBadge();
   setInterval(refreshBadge, 15000);
   document.addEventListener('visibilitychange', () => {
@@ -244,11 +246,12 @@ async function loadProducts() {
   wireCards(items);
 }
 
+
 // ================= RENDER =================
 function productCard(p) {
   if (p.simple) {
     return `
-    <div class="card" data-id="${p.id}">
+    <div class="card" data-id="${p.id}" id="product-${p.id}">
       <img src="${p.image}" alt="${p.title}">
       <div class="content">
         <div class="badge">${p.platforms.join(' • ')}</div>
@@ -279,7 +282,7 @@ function productCard(p) {
                ? Object.keys(vmap[o1][o2]) : [];
 
   return `
-  <div class="card" data-id="${p.id}">
+  <div class="card" data-id="${p.id}" id="product-${p.id}">
     <img src="${p.image}" alt="${p.title}">
     <div class="content">
       <div class="badge">${p.platforms.join(' • ')}</div>
@@ -321,7 +324,7 @@ function wireCards(items) {
 
     if (product.simple) {
       const varSel = card.querySelector('.simple-variant');
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => {
         const q = Math.max(1, parseInt(qty?.value, 10) || 1);
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
         if (!variantId) { if (DEBUG) console.warn('[cart] missing variantId'); return; }
@@ -358,7 +361,7 @@ function wireCards(items) {
       if (o3Sel) o3Sel.innerHTML = o3Vals.map(v => `<option value="${v}">${v}</option>`).join('');
     });
 
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', () => {
       const o1 = o1Sel ? o1Sel.value : Object.keys(vmap)[0];
       const o2 = o2Sel ? o2Sel.value : (vmap[o1] ? Object.keys(vmap[o1])[0] : '');
       const node = vmap[o1]?.[o2];
@@ -368,8 +371,6 @@ function wireCards(items) {
       let variantId = null;
       if (typeof node === 'object') variantId = node?.[o3] || null;  // 3-level
       else variantId = vmap[o1]?.[o2] || null;                       // 2-level
-
-      if (DEBUG) console.log('[cart] chosen variant', variantId, {o1, o2, o3, q});
 
       if (!variantId) { if (DEBUG) console.warn('[cart] no variantId resolved'); return; }
       primeCartTab();
@@ -412,7 +413,7 @@ function updateUrlFromFilters() {
 }
 
 
-// ================= HOTSPOTS (optional) =================
+// ================= HOTSPOTS =================
 document.addEventListener('click', (e) => {
   const spot = e.target.closest('.hotspot');
   if (!spot) return;
