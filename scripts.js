@@ -1,61 +1,77 @@
 // ================ CONFIG =================
-const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' }; // change if needed
-let cartWin = null; // single, reusable cart tab
+const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' };
+const CART_URL = `https://${SHOPIFY.shop}/cart`;
+const CART_JS  = `https://${SHOPIFY.shop}/cart.js`;
+const ADD_URL  = `https://${SHOPIFY.shop}/cart/add`;
 
-// store only last confirmed count (no optimistic math)
-let lastConfirmedCount = Number(localStorage.getItem('lastConfirmedCount') ?? 0) || 0;
+// Named window handle (reused)
+let cartWin = null;
 
 // ================ BADGE ==================
 function setBadge(n) {
   const el = document.getElementById('cart-count');
-  if (el) el.textContent = String(Number.isFinite(n) ? n : 0);
+  if (el) el.textContent = String(n);
 }
-setBadge(lastConfirmedCount);
 
-// Confirmed read from Shopify (never optimistic)
+// Only ever trust Shopify for the number
 async function updateCartCount() {
   try {
-    const res = await fetch(`https://${SHOPIFY.shop}/cart.js`, {
-      credentials: 'include',
-      cache: 'no-store',
-      mode: 'cors',
-      referrerPolicy: 'no-referrer-when-downgrade'
-    });
+    const res = await fetch(CART_JS, { credentials: 'include', cache: 'no-store', mode: 'cors' });
     if (!res.ok) return;
     const data = await res.json();
-    const n = Number(data?.item_count) || 0;
-    lastConfirmedCount = n;
-    localStorage.setItem('lastConfirmedCount', String(n));
-    setBadge(n);
+    setBadge(Number(data.item_count) || 0);
   } catch {
-    // first-visit/mobile cookie edge cases—leave badge as-is
+    // ignore — user may not have cart cookies yet
   }
 }
 
-// Open/reuse the cart tab (safer noopener style)
-function openCartTab(url = `https://${SHOPIFY.shop}/cart`) {
-  const name = 'SHOPIFY_CART';
-  const w = cartWin && !cartWin.closed ? cartWin : window.open('', name);
-  if (!w) return; // popup blocked
-  try { w.opener = null; } catch {}
-  try { w.location.href = url; } catch {}
-  try { w.focus(); } catch {}
-  cartWin = w;
-
-  // after opening a top-level Shopify page, cookies exist → resync a few times
-  setTimeout(updateCartCount, 1500);
-  setTimeout(updateCartCount, 4000);
-  setTimeout(updateCartCount, 8000);
+// ================ CART WINDOW =============
+// Ensure the named cart window exists/opened in a user gesture
+function ensureCartWindow() {
+  // If closed or missing, open a fresh named window
+  if (!cartWin || cartWin.closed) {
+    // Use a minimal about:blank first; navigation happens via form target
+    cartWin = window.open('', 'SHOPIFY_CART');
+    try { if (cartWin) cartWin.opener = null; } catch {}
+  }
+  return cartWin || null;
 }
 
-// Append an item by navigating the named cart tab to cart/add (no CORS issues)
-// IMPORTANT: no optimistic badge bump here.
-function addViaUrl(variantId, qty) {
-  const q = Math.max(1, Number(qty) || 1);
-  const url = `https://${SHOPIFY.shop}/cart/add?id=${encodeURIComponent(variantId)}&quantity=${q}`;
-  openCartTab(url);
-  // resync shortly after add
-  setTimeout(updateCartCount, 2500);
+// ================ CROSS-ORIGIN POST HELPERS =============
+// Classic form POST to Shopify. Works on mobile & with a pre-open tab.
+function postToShopify(actionUrl, params, targetName) {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = actionUrl;
+  form.target = targetName;
+
+  // Shopify expects `id` and `quantity` for /cart/add; extra params are okay.
+  Object.entries(params).forEach(([k, v]) => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden';
+    inp.name = k;
+    inp.value = String(v);
+    form.appendChild(inp);
+  });
+
+  // Hidden submit
+  form.style.position = 'absolute';
+  form.style.left = '-9999px';
+  document.body.appendChild(form);
+  form.submit();
+  setTimeout(() => form.remove(), 1000);
+}
+
+// Add one line item; opens/reuses the named cart tab
+function addLineItem(variantId, qty) {
+  const w = ensureCartWindow();
+  if (!w) return; // popup blocked
+
+  postToShopify(ADD_URL, { id: variantId, quantity: Math.max(1, Number(qty) || 1) }, 'SHOPIFY_CART');
+
+  // Sync the real count shortly after Shopify processes the add
+  setTimeout(updateCartCount, 1200);
+  setTimeout(updateCartCount, 3000);
   setTimeout(updateCartCount, 6000);
 }
 
@@ -66,17 +82,13 @@ function setNavHeightVar() {
   const h = Math.ceil(nav.getBoundingClientRect().height);
   document.documentElement.style.setProperty('--nav-h', `${h}px`);
 }
-
 function openMobileMenu(toggle, menu) {
   if (!toggle || !menu) return;
   setNavHeightVar();
   menu.classList.add('is-open');
   toggle.setAttribute('aria-expanded', 'true');
-  document.body.classList.add('no-scroll'); // prevent background scroll
-  // If you prefer to auto-scroll to top when opened, uncomment:
-  // window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.body.classList.add('no-scroll');
 }
-
 function closeMobileMenu(toggle, menu) {
   if (!toggle || !menu) return;
   menu.classList.remove('is-open');
@@ -86,27 +98,34 @@ function closeMobileMenu(toggle, menu) {
 
 // ================ BOOT ===================
 document.addEventListener('DOMContentLoaded', () => {
-  // Wire cart links to reuse the same named tab
+  // Wire cart links: open/reuse the named cart tab
   const cartTargets = [
     ...document.querySelectorAll('[data-cart-link]'),
     ...document.querySelectorAll('#cart-link')
   ];
   cartTargets.forEach(el => {
-    const href = `https://${SHOPIFY.shop}/cart`;
-    el.setAttribute('href', href);           // keep for long-press/copy
+    el.setAttribute('href', CART_URL);
     el.setAttribute('target', '_blank');
     el.setAttribute('rel', 'noopener');
     el.addEventListener('click', (e) => {
       e.preventDefault();
-      openCartTab(href);
+      const w = ensureCartWindow();
+      if (!w) return; // popup blocked
+      // If it's a fresh blank window, navigate it to the cart page
+      try {
+        if (w.location.href === 'about:blank') w.location.href = CART_URL;
+        w.focus();
+      } catch {}
+      // Sync in case Shopify set cookies after opening
+      setTimeout(updateCartCount, 1000);
+      setTimeout(updateCartCount, 3000);
     });
   });
 
-  // mobile menu toggle (fixed overlay behavior)
+  // Mobile menu toggle (fixed overlay behavior)
   const toggle = document.querySelector('.nav-toggle');
   const menu = document.getElementById('main-menu');
 
-  // keep CSS var in sync with actual nav height
   setNavHeightVar();
   window.addEventListener('resize', setNavHeightVar);
   window.addEventListener('orientationchange', setNavHeightVar);
@@ -114,21 +133,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (toggle && menu) {
     toggle.addEventListener('click', () => {
       const isOpen = menu.classList.contains('is-open');
-      if (isOpen) {
-        closeMobileMenu(toggle, menu);
-      } else {
-        openMobileMenu(toggle, menu);
-      }
+      if (isOpen) closeMobileMenu(toggle, menu);
+      else openMobileMenu(toggle, menu);
     });
 
-    // Close menu when a link inside is clicked
     menu.addEventListener('click', (e) => {
       const a = e.target.closest('a');
-      if (!a) return;
-      closeMobileMenu(toggle, menu);
+      if (a) closeMobileMenu(toggle, menu);
     });
 
-    // Close on outside click (only if open)
     document.addEventListener('click', (e) => {
       if (!menu.classList.contains('is-open')) return;
       const insideMenu = e.target.closest('#main-menu');
@@ -136,31 +149,24 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!insideMenu && !onToggle) closeMobileMenu(toggle, menu);
     });
 
-    // Close on Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && menu.classList.contains('is-open')) {
         closeMobileMenu(toggle, menu);
       }
     });
 
-    // Close if resizing to desktop breakpoint
     const mqDesktop = window.matchMedia('(min-width: 801px)');
     mqDesktop.addEventListener?.('change', (m) => {
       if (m.matches) closeMobileMenu(toggle, menu);
     });
   }
 
-  // initial and periodic confirmed counts
+  // First count sync (shows 0 until Shopify cookies exist)
   updateCartCount();
+  // Keep trying to stay in sync
   setInterval(updateCartCount, 15000);
 
-  // also resync when returning to tab / focusing window
-  window.addEventListener('focus', updateCartCount);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') updateCartCount();
-  });
-
-  // filters + products
+  // Filters + products
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
   loadProducts().catch(err => console.error('loadProducts failed', err));
 });
@@ -168,10 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ================ DATA LOAD ==============
 async function loadProducts() {
   const res = await fetch('assets/products.json', { cache: 'no-store' });
-  if (!res.ok) {
-    console.error('products.json fetch failed:', res.status, res.statusText);
-    return;
-  }
+  if (!res.ok) { console.error('products.json fetch failed:', res.status, res.statusText); return; }
   const items = await res.json();
 
   // Category grids
@@ -192,7 +195,6 @@ async function loadProducts() {
     fg.innerHTML = picks.map(p => productCard(p)).join('');
   }
 
-  // Wire events after render
   wireCards(items);
 }
 
@@ -275,10 +277,11 @@ function wireCards(items) {
     if (product.simple) {
       const varSel = card.querySelector('.simple-variant');
       btn.addEventListener('click', () => {
+        // Open/reuse the cart window in the same user gesture
+        ensureCartWindow();
         const qty = Math.max(1, parseInt(qtyEl?.value, 10) || 1);
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
-        if (variantId) addViaUrl(variantId, qty);
-        openCartTab(); // brings/reuses the tab
+        if (variantId) addLineItem(variantId, qty);
       });
       return;
     }
@@ -307,6 +310,8 @@ function wireCards(items) {
     });
 
     btn.addEventListener('click', () => {
+      ensureCartWindow();
+
       const o1 = opt1 ? opt1.value : Object.keys(vmap)[0];
       const o2 = opt2 ? opt2.value : (vmap[o1] ? Object.keys(vmap[o1])[0] : '');
       const node = vmap[o1]?.[o2];
@@ -320,11 +325,11 @@ function wireCards(items) {
         variantId = vmap[o1]?.[o2] || null; // 2-level map
       }
 
-      if (variantId) addViaUrl(variantId, qty);
+      if (variantId) addLineItem(variantId, qty);
       if (powderEl && powderEl.checked && product.powdercoat_variant_id) {
-        addViaUrl(product.powdercoat_variant_id, 1);
+        // slight delay so requests land in order
+        setTimeout(() => addLineItem(product.powdercoat_variant_id, 1), 250);
       }
-      openCartTab();
     });
   });
 }
@@ -346,11 +351,9 @@ function initFilters() {
     });
   }
 }
-
 function getActiveTags() {
   return Array.from(document.querySelectorAll('.toggle.active')).map(el => el.dataset.tag);
 }
-
 function updateUrlFromFilters() {
   const tags = getActiveTags();
   const params = new URLSearchParams();
