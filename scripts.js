@@ -5,9 +5,12 @@ const CART      = `https://${SHOPIFY.shop}/cart`;
 const CART_JS   = `https://${SHOPIFY.shop}/cart.js`;
 const CART_ADD  = `https://${SHOPIFY.shop}/cart/add`;
 const CART_NAME = 'SHOPIFY_CART';
-
-// Debug log toggle
 const DEBUG = false;
+
+// Detect iOS/Safari-ish for safer delays
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const PRIME_DELAY = IS_IOS ? 450 : 250;   // delay between prime and first add
+const BETWEEN_ADDS = IS_IOS ? 600 : 400;  // delay between multiple adds
 
 // For hotspot clicks that happen before products render
 let __pendingScrollSel = null;
@@ -23,7 +26,7 @@ async function updateCartCount() {
     if (!r.ok) return;
     const data = await r.json();
     const cnt = Number(data.item_count) || 0;
-    if (DEBUG) console.log('[cart] count from Shopify', cnt);
+    if (DEBUG) console.log('[cart] count', cnt);
     setBadge(cnt);
   } catch (e) {
     if (DEBUG) console.warn('[cart] count fetch failed', e);
@@ -31,42 +34,53 @@ async function updateCartCount() {
 }
 
 // ================= ONE NAMED CART TAB, ALWAYS =================
-// Use an <a> click with target="SHOPIFY_CART" so the browser *reuses* that tab.
+// Keep a singleton anchor so the browser truly reuses the same named tab.
+let __cartAnchor = null;
+function getCartAnchor() {
+  if (!__cartAnchor) {
+    __cartAnchor = document.createElement('a');
+    __cartAnchor.style.display = 'none';
+    __cartAnchor.target = CART_NAME;   // the magic: named target
+    // IMPORTANT: do NOT set rel="noreferrer" here—Safari may open new tabs
+    document.body.appendChild(__cartAnchor);
+  }
+  return __cartAnchor;
+}
 function openInCartTab(url) {
-  const a = document.createElement('a');
+  const a = getCartAnchor();
   a.href = url;
-  a.target = CART_NAME;       // reuse named tab
-  a.rel = 'noreferrer';       // avoid opener side-effects
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  a.click();           // user-gesture context from the button click handler
 }
 
 // Prime cart tab (loads /cart) so cookies/state are set, then we can navigate it again for adds.
 function primeCartTab() {
+  if (DEBUG) console.log('[cart] prime /cart');
   openInCartTab(CART);
 }
 
-// Add a single line via GET, then show /cart (return_to=/cart).
-// Include a cache-buster so browsers never cache the add.
+// Add a single line via GET, then show /cart (return_to=/cart). Cache-buster included.
 function addLineGET(variantId, qty) {
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
   const url = `${CART_ADD}?id=${encodeURIComponent(id)}&quantity=${q}&return_to=%2Fcart&_=${Date.now()}`;
-  if (DEBUG) console.log('[cart] add variant', id, 'qty', q, '→', url);
+  if (DEBUG) console.log('[cart] add', { id, q, url });
   openInCartTab(url);
 
-  // Sync the real count a few times after Shopify processes it
+  // Sync real count after Shopify processes
   setTimeout(updateCartCount, 1200);
   setTimeout(updateCartCount, 3000);
   setTimeout(updateCartCount, 6000);
 }
 
-// Add two items serially (e.g., base + powdercoat). Delay prevents mobile/Safari races.
-function addTwoSequentially(v1, q1, v2, q2) {
-  addLineGET(v1, q1);
-  setTimeout(() => addLineGET(v2, q2), 500);
+// Sequence: prime → (delay) → add base → (delay) → add powder (optional)
+function addWithPrimeSequence(baseId, baseQty, powderId = null, powderQty = 0) {
+  primeCartTab();
+  setTimeout(() => {
+    addLineGET(baseId, baseQty);
+    if (powderId) {
+      setTimeout(() => addLineGET(powderId, powderQty), BETWEEN_ADDS);
+    }
+  }, PRIME_DELAY);
 }
 
 // ================= MOBILE NAV HELPERS =================
@@ -98,8 +112,6 @@ function scrollToEl(el) {
   const extra = 20;
   const top = el.getBoundingClientRect().top + window.pageYOffset - (navH + extra);
   window.scrollTo({ top, behavior: 'smooth' });
-
-  // Optional flash highlight if you style .flash in CSS
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
 
@@ -109,28 +121,23 @@ document.addEventListener('DOMContentLoaded', () => {
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
     el.setAttribute('href', CART);
     el.setAttribute('target', CART_NAME);   // reuse; NOT _blank
-    el.removeAttribute('rel');              // allow name reuse
-    // Let it navigate normally; afterwards, sync count
+    el.removeAttribute('rel');              // let named target work normally
+    // No preventDefault—let it open normally, then refresh badge
     el.addEventListener('click', () => {
       setTimeout(updateCartCount, 1200);
       setTimeout(updateCartCount, 3000);
     });
   });
 
-  // Hotspots: click → scroll to target (e.g., data-target="#product-hd-front-bumper")
+  // Hotspots
   document.addEventListener('click', (e) => {
     const spot = e.target.closest('.hotspot');
     if (!spot) return;
     const sel = spot.getAttribute('data-target');
     if (!sel) return;
-
     const target = document.querySelector(sel);
-    if (target) {
-      scrollToEl(target);
-    } else {
-      // If cards not rendered yet, remember and perform after loadProducts
-      __pendingScrollSel = sel;
-    }
+    if (target) scrollToEl(target);
+    else __pendingScrollSel = sel;
   });
 
   // Mobile menu toggle
@@ -168,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Filters + products
   try { initFilters(); } catch (e) { if (DEBUG) console.warn('initFilters error', e); }
-  loadProducts().catch(err => console.error('loadProducts failed:', err));
+  loadProducts().catch(err => console.error('loadProducts failed', err));
 });
 
 // ================= DATA LOAD =================
@@ -207,9 +214,7 @@ async function loadProducts() {
 
 // ================= RENDER =================
 function productCard(p) {
-  // give every card a stable id so hotspots can target it
   const cardId = `product-${p.id}`;
-
   if (p.simple) {
     return `
     <div class="card" data-id="${p.id}" id="${cardId}">
@@ -288,11 +293,7 @@ function wireCards(items) {
         const q = Math.max(1, parseInt(qty?.value, 10) || 1);
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
         if (variantId) {
-          primeCartTab();
-          addLineGET(variantId, q);
-          if (coat && coat.checked && product.powdercoat_variant_id) {
-            setTimeout(() => addLineGET(product.powdercoat_variant_id, 1), 500);
-          }
+          addWithPrimeSequence(variantId, q, (coat && coat.checked && product.powdercoat_variant_id) ? product.powdercoat_variant_id : null, 1);
         } else if (DEBUG) {
           console.warn('[cart] missing variantId');
         }
@@ -335,11 +336,8 @@ function wireCards(items) {
       if (DEBUG) console.log('[cart] chosen variant', variantId, {o1, o2, o3, q});
 
       if (variantId) {
-        primeCartTab();
-        addLineGET(variantId, q);
-        if (coat && coat.checked && product.powdercoat_variant_id) {
-          setTimeout(() => addLineGET(product.powdercoat_variant_id, 1), 500);
-        }
+        const addPowder = (coat && coat.checked && product.powdercoat_variant_id) ? product.powdercoat_variant_id : null;
+        addWithPrimeSequence(variantId, q, addPowder, 1);
       } else if (DEBUG) {
         console.warn('[cart] no variantId resolved', { product: product.id, o1, o2, o3 });
       }
