@@ -48,27 +48,35 @@
 <main class="container">
   <div class="product-header"><h1>Humvee</h1></div>
     <div class="humvee-hotspots">
+    <!-- using your HUMVEE_transparent_v2.png -->
     <div class="hotspot-container">
-      <img src="assets/HUMVEE_transparent_v2.png" alt="Humvee" class="humvee-img" />
+      <img src="assets/HUMVEE_transparent_v2.png" class="humvee-img" alt="Humvee">
 
-      <!-- Hotspots (percent positions; tweak as needed) -->
-      <!-- Roof -->
-      <a class="hotspot" data-target="#product-roof" style="left:57%; top:29%;" aria-label="Roof"></a>
-      <!-- Door (front right) -->
+  <!-- Roof → roof-reinforce -->
+      <a class="hotspot" data-target="#product-roof-reinforce" style="left:57%; top:29%;" aria-label="Roof"></a>
+
+  <!-- Door (no product yet? see #3) -->
       <a class="hotspot" data-target="#product-door" style="left:58%; top:54%;" aria-label="Door"></a>
-      <!-- Back slant cover (rear roof slope) -->
-      <a class="hotspot" data-target="#product-rear-slant" style="left:79%; top:43%;" aria-label="Back Slant Cover"></a>
-      <!-- Back gate / tailgate -->
+
+  <!-- Back slant cover → rear-curtain -->
+      <a class="hotspot" data-target="#product-rear-curtain" style="left:79%; top:43%;" aria-label="Back Slant Cover"></a>
+
+  <!-- Back gate → humvee-rear-insert (or change if you add a tailgate product) -->
       <a class="hotspot" data-target="#product-humvee-rear-insert" style="left:86%; top:58%;" aria-label="Back Gate"></a>
-      <!-- Front bumper -->
-      <a class="hotspot" data-target="#product-bumper" style="left:24%; top:67%;" aria-label="Front Bumper"></a>
-      <!-- Headlight (driver front) -->
+
+  <!-- Front bumper → hd-front-bumper -->
+      <a class="hotspot" data-target="#product-hd-front-bumper" style="left:24%; top:67%;" aria-label="Front Bumper"></a>
+
+  <!-- Headlight (no product yet? see #3) -->
       <a class="hotspot" data-target="#product-headlight" style="left:32%; top:59%;" aria-label="Headlight"></a>
-      <!-- Front wheel -->
+
+  <!-- Wheel (no product yet? see #3) -->
       <a class="hotspot" data-target="#product-wheel" style="left:40%; top:72%;" aria-label="Wheel"></a>
-      <!-- Back of cab area (rear of passenger compartment) -->
+
+  <!-- Back of cab area (no product yet? see #3) -->
       <a class="hotspot" data-target="#product-cab-rear" style="left:67%; top:50%;" aria-label="Back of Cab"></a>
     </div>
+
   </div>
   <div class="filters"><div class="toggle" data-tag="Stainless">Stainless</div><div class="toggle" data-tag="Armor">Armor</div><div class="toggle" data-tag="Doors">Doors</div><div class="toggle" data-tag="Roof">Roof</div><div class="toggle" data-tag="Rear Curtain">Rear Curtain</div><div class="toggle" data-tag="Windows">Windows</div></div>
   <div id="product-grid" class="grid" data-category="Humvee"></div>
