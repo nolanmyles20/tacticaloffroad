@@ -56,6 +56,31 @@ function addViaUrl(variantId, qty) {
   openCartTab(url);
 }
 
+// ================ MOBILE NAV HELPERS ================
+function setNavHeightVar() {
+  const nav = document.querySelector('.nav');
+  if (!nav) return;
+  const h = Math.ceil(nav.getBoundingClientRect().height);
+  document.documentElement.style.setProperty('--nav-h', `${h}px`);
+}
+
+function openMobileMenu(toggle, menu) {
+  if (!toggle || !menu) return;
+  setNavHeightVar();
+  menu.classList.add('is-open');
+  toggle.setAttribute('aria-expanded', 'true');
+  document.body.classList.add('no-scroll'); // prevent background scroll
+  // If you prefer to auto-scroll to top when opened, uncomment:
+  // window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function closeMobileMenu(toggle, menu) {
+  if (!toggle || !menu) return;
+  menu.classList.remove('is-open');
+  toggle.setAttribute('aria-expanded', 'false');
+  document.body.classList.remove('no-scroll');
+}
+
 // ================ BOOT ===================
 document.addEventListener('DOMContentLoaded', () => {
   // Wire cart links to reuse the same named tab
@@ -74,13 +99,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // mobile menu toggle
+  // mobile menu toggle (fixed overlay behavior)
   const toggle = document.querySelector('.nav-toggle');
   const menu = document.getElementById('main-menu');
+
+  // keep CSS var in sync with actual nav height
+  setNavHeightVar();
+  window.addEventListener('resize', setNavHeightVar);
+  window.addEventListener('orientationchange', setNavHeightVar);
+
   if (toggle && menu) {
     toggle.addEventListener('click', () => {
-      const open = menu.classList.toggle('is-open');
-      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      const isOpen = menu.classList.contains('is-open');
+      if (isOpen) {
+        closeMobileMenu(toggle, menu);
+      } else {
+        openMobileMenu(toggle, menu);
+      }
+    });
+
+    // Close menu when a link inside is clicked
+    menu.addEventListener('click', (e) => {
+      const a = e.target.closest('a');
+      if (!a) return;
+      closeMobileMenu(toggle, menu);
+    });
+
+    // Close on outside click (only if open)
+    document.addEventListener('click', (e) => {
+      if (!menu.classList.contains('is-open')) return;
+      const insideMenu = e.target.closest('#main-menu');
+      const onToggle = e.target.closest('.nav-toggle');
+      if (!insideMenu && !onToggle) closeMobileMenu(toggle, menu);
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && menu.classList.contains('is-open')) {
+        closeMobileMenu(toggle, menu);
+      }
+    });
+
+    // Close if resizing to desktop breakpoint
+    const mqDesktop = window.matchMedia('(min-width: 801px)');
+    mqDesktop.addEventListener?.('change', (m) => {
+      if (m.matches) closeMobileMenu(toggle, menu);
     });
   }
 
