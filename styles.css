@@ -246,3 +246,16 @@ html { scroll-behavior:smooth; }
   /* keep desktop links hidden on mobile */
   .links{ display:none !important; }
 }
+@media (max-width:800px){
+  .nav-title{
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+    text-align: center;
+    margin: 0;
+
+    /* 💥 Bigger + responsive */
+    font-size: clamp(32px, 10vw, 48px);
+    letter-spacing: 0.15em;
+  }
+}
