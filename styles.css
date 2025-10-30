@@ -242,3 +242,57 @@ html { scroll-behavior:smooth; }
 
 /* iOS font autosizing can cause surprises; keep it stable */
 html { -webkit-text-size-adjust: 100%; }
+/* ===== DESKTOP: 2-row header (title full-width, tabs center, cart right) ===== */
+@media (min-width:801px){
+  /* Two rows: [title] then [links | cart] */
+  .nav{
+    display: grid;
+    grid-template-rows: auto auto;
+    grid-template-columns: 1fr auto;   /* row 2 columns: links | cart */
+    align-items: center;
+    row-gap: 8px;
+  }
+
+  /* Hide the logo on desktop too */
+  .logo-link{ display: none !important; }
+
+  /* No hamburger on desktop */
+  .nav-toggle{ display: none !important; }
+
+  /* Row 1: big centered title spanning full width */
+  .nav-title{
+    grid-row: 1;
+    grid-column: 1 / -1;
+    justify-self: center;
+    text-align: center;
+
+    /* Large but safe sizing */
+    font-size: clamp(28px, 5vw, 56px);
+    letter-spacing: 0.14em;
+    max-width: 100%;
+    padding-inline: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+  }
+
+  /* Row 2: tabs centered */
+  .links{
+    grid-row: 2;
+    grid-column: 1;
+    display: flex !important;
+    justify-self: center;     /* center the whole group */
+    gap: 8px;
+  }
+
+  /* Row 2: cart pinned right */
+  .nav-cart{
+    grid-row: 2;
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  /* Ensure mobile menu overlay is never shown on desktop */
+  #main-menu{ display: none !important; }
+}
