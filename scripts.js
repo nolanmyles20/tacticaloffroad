@@ -1,18 +1,17 @@
 // ============== CONFIG ==============
-const SHOPIFY = { shop: 'tacticaloffroad.myshopify.com' };
-const CART      = `https://${SHOPIFY.shop}/cart`;
-const CART_JS   = `https://${SHOPIFY.shop}/cart.js`;
-const CART_ADD  = `https://${SHOPIFY.shop}/cart/add`;
+const SHOPIFY  = { shop: 'tacticaloffroad.myshopify.com' };
+const CART     = `https://${SHOPIFY.shop}/cart`;
+const CART_JS  = `https://${SHOPIFY.shop}/cart.js`;
+const CART_ADD = `https://${SHOPIFY.shop}/cart/add`;
 const CART_NAME = 'SHOPIFY_CART';
 
-let cartWin = null; // single named window/tab
+let cartWin = null; // single named window/tab ref
 
 // ============== BADGE (trust Shopify only) ==============
 function setBadge(n) {
   const el = document.getElementById('cart-count');
   if (el) el.textContent = String(n ?? 0);
 }
-
 async function updateCartCount() {
   try {
     const r = await fetch(CART_JS, { credentials: 'include', cache: 'no-store', mode: 'cors' });
@@ -23,43 +22,59 @@ async function updateCartCount() {
 }
 
 // ============== CART WINDOW HELPERS ==============
-// Open (or reuse) the *named* cart window. We purposely open about:blank first;
-// we immediately navigate it to the correct URL on each action.
+// Always reuse the *named* window. Using "" (empty URL) avoids about:blank flashes.
 function ensureCartWindow() {
-  if (!cartWin || cartWin.closed) {
-    cartWin = window.open('about:blank', CART_NAME);
-    try { if (cartWin) cartWin.opener = null; } catch {}
-  }
-  try { cartWin.focus(); } catch {}
+  // Reacquire by name every click (robust if user navigated the tab elsewhere)
+  cartWin = window.open('', CART_NAME);
+  try { if (cartWin) cartWin.opener = null; } catch {}
+  try { cartWin && cartWin.focus(); } catch {}
   return cartWin || null;
 }
-
-// Navigate the named cart window to a URL (works cross-origin from opener)
 function navCart(url) {
   const w = ensureCartWindow();
-  if (!w) {
-    // Popup blocked → fallback to same-tab navigation
-    window.location.href = url;
-    return;
-  }
+  if (!w) { window.location.href = url; return; } // popup blocked fallback
   try { w.location.href = url; } catch {}
 }
 
-// ============== ADD TO CART (reliable on mobile/desktop) ==============
-// We build a GET /cart/add?…&return_to=/cart and *navigate the named window* to it.
-function addLineItem(variantId, qty) {
+// ============== ADD TO CART (POST via hidden form targeted to SHOPIFY_CART) ==============
+// This pattern is the most reliable across Safari/iOS/Android/desktop.
+function postCartAdd(variantId, qty) {
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
-  const url = `${CART_ADD}?id=${encodeURIComponent(id)}&quantity=${q}&return_to=%2Fcart`;
-  navCart(url);
 
-  // Pull the real count a few times after add
+  // Ensure the named window exists & is focused (user gesture context)
+  ensureCartWindow();
+
+  // Build a throwaway form
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = CART_ADD;
+  form.target = CART_NAME; // <- send into the same named tab
+
+  const inpId = document.createElement('input');
+  inpId.type = 'hidden'; inpId.name = 'id'; inpId.value = id;
+
+  const inpQty = document.createElement('input');
+  inpQty.type = 'hidden'; inpQty.name = 'quantity'; inpQty.value = String(q);
+
+  const returnTo = document.createElement('input');
+  returnTo.type = 'hidden'; returnTo.name = 'return_to'; returnTo.value = '/cart';
+
+  form.appendChild(inpId);
+  form.appendChild(inpQty);
+  form.appendChild(returnTo);
+
+  document.body.appendChild(form);
+  form.submit();          // Navigate the named window to /cart (after add)
+  form.remove();          // Clean up
+
+  // Pull the real count after Shopify processes the add
   setTimeout(updateCartCount, 1200);
   setTimeout(updateCartCount, 3000);
   setTimeout(updateCartCount, 6000);
 }
 
-// ============== MOBILE NAV (unchanged from your working version) ==============
+// ============== MOBILE NAV HELPERS (yours) ==============
 function setNavHeightVar() {
   const nav = document.querySelector('.nav');
   if (!nav) return;
@@ -82,20 +97,20 @@ function closeMobileMenu(toggle, menu) {
 
 // ============== BOOT ==============
 document.addEventListener('DOMContentLoaded', () => {
-  // Make all cart links reuse the SAME named window/tab
+  // Make all cart links reuse the SAME named tab
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
     el.setAttribute('href', CART);
-    el.setAttribute('target', CART_NAME);     // <-- reuse, not _blank
-    el.removeAttribute('rel');                // no noopener, we want to reuse the name
+    el.setAttribute('target', CART_NAME); // reuse name (not _blank)
+    el.removeAttribute('rel');            // allow reuse of named window
     el.addEventListener('click', (e) => {
       e.preventDefault();
-      navCart(CART);                          // open/reuse cart
+      navCart(CART);
       setTimeout(updateCartCount, 1000);
       setTimeout(updateCartCount, 3000);
     });
   });
 
-  // Mobile menu toggle (your fixed overlay)
+  // Mobile menu toggle
   const toggle = document.querySelector('.nav-toggle');
   const menu   = document.getElementById('main-menu');
 
@@ -107,9 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toggle.addEventListener('click', () => {
       menu.classList.contains('is-open') ? closeMobileMenu(toggle, menu) : openMobileMenu(toggle, menu);
     });
-    menu.addEventListener('click', (e) => {
-      if (e.target.closest('a')) closeMobileMenu(toggle, menu);
-    });
+    menu.addEventListener('click', (e) => { if (e.target.closest('a')) closeMobileMenu(toggle, menu); });
     document.addEventListener('click', (e) => {
       if (!menu.classList.contains('is-open')) return;
       const inMenu = e.target.closest('#main-menu');
@@ -123,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     mq.addEventListener?.('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
   }
 
-  // First badge + slow polling to stay in sync
+  // First badge + periodic sync
   updateCartCount();
   setInterval(updateCartCount, 15000);
 
@@ -238,10 +251,9 @@ function wireCards(items) {
       btn.addEventListener('click', () => {
         const q = Math.max(1, parseInt(qty?.value, 10) || 1);
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
-        if (variantId) addLineItem(variantId, q);
+        if (variantId) postCartAdd(variantId, q);
         if (coat && coat.checked && product.powdercoat_variant_id) {
-          // tiny delay to serialize requests
-          setTimeout(() => addLineItem(product.powdercoat_variant_id, 1), 200);
+          setTimeout(() => postCartAdd(product.powdercoat_variant_id, 1), 250);
         }
       });
       return;
@@ -281,9 +293,9 @@ function wireCards(items) {
       if (typeof node === 'object') variantId = node?.[o3] || null;   // 3-level
       else variantId = vmap[o1]?.[o2] || null;                        // 2-level
 
-      if (variantId) addLineItem(variantId, q);
+      if (variantId) postCartAdd(variantId, q);
       if (coat && coat.checked && product.powdercoat_variant_id) {
-        setTimeout(() => addLineItem(product.powdercoat_variant_id, 1), 200);
+        setTimeout(() => postCartAdd(product.powdercoat_variant_id, 1), 250);
       }
     });
   });
@@ -316,26 +328,15 @@ function updateUrlFromFilters() {
   const newUrl = window.location.pathname + (tags.length ? ('?' + params.toString()) : '');
   history.replaceState({}, '', newUrl);
 }
+
+// (Optional) hotspot demo from your snippet
 document.addEventListener('click', (e) => {
   const spot = e.target.closest('.hotspot');
   if (!spot) return;
-
   const sel = spot.getAttribute('data-target');
   if (!sel) return;
-
   const target = document.querySelector(sel);
-  if (!target) {
-    console.warn('Hotspot target not found:', sel);
-    return;
-  }
-
-  // If you need to open/expand filters first, you can hook in here.
-
-  // Scroll into view (smooth handled by CSS)
+  if (!target) { console.warn('Hotspot target not found:', sel); return; }
   target.scrollIntoView({ block: 'center' });
-
-  // Flash the product card
-  target.classList.remove('flash');
-  void target.offsetWidth; // restart animation
-  target.classList.add('flash');
+  target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
 });
