@@ -366,4 +366,4 @@ document.addEventListener('click', (e) => {
     __pendingScrollSel = sel; // wait until loadProducts finishes
   }
 });
-</script>
+
