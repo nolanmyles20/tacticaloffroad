@@ -6,12 +6,25 @@ const CART_JS    = `https://${SHOPIFY.shop}/cart.js`;
 const CART_ADD   = `https://${SHOPIFY.shop}/cart/add`;
 const CART_NAME  = 'SHOPIFY_CART';
 
-// Storefront (used to keep a *reliable* badge, independent of cookies)
+// Storefront (badge reliability + session mirror)
 const SF_ENDPOINT = `https://${SHOPIFY.shop}/api/2025-01/graphql.json`;
 const SF_TOKEN    = '7f1d57625124831f8f9c47a088e48fb8'; // Storefront Access Token
 
 const DEBUG = false;
 
+// Pending scroll target if hotspot clicked before products render
+let __pendingScrollSel = null;
+
+// Shadow counter so badge updates instantly even if cookies are blocked
+function getShadowQty() {
+  return Number(localStorage.getItem('shadowCartQty') || 0) || 0;
+}
+function setShadowQty(n) {
+  localStorage.setItem('shadowCartQty', String(Math.max(0, n|0)));
+}
+function bumpShadow(q) {
+  setShadowQty(getShadowQty() + Math.max(1, Number(q) || 1));
+}
 
 // ================= BADGE =================
 function setBadge(n) {
@@ -28,7 +41,7 @@ async function getCountFromCartJs() {
   } catch { return 0; }
 }
 
-// ---- Storefront helpers (for reliable badge) ----
+// ---- Storefront helpers ----
 async function sfFetch(query, variables = {}) {
   const r = await fetch(SF_ENDPOINT, {
     method: 'POST',
@@ -48,9 +61,7 @@ async function sfFetch(query, variables = {}) {
 async function ensureCart() {
   let id = localStorage.getItem('sf_cartId');
   if (id) return id;
-  const data = await sfFetch(`
-    mutation CreateCart { cartCreate { cart { id } } }
-  `);
+  const data = await sfFetch(`mutation CreateCart { cartCreate { cart { id } } }`);
   id = data?.cartCreate?.cart?.id || '';
   if (id) localStorage.setItem('sf_cartId', id);
   return id;
@@ -78,27 +89,35 @@ async function getCountFromStorefront() {
   try {
     const id = await ensureCart();
     if (!id) return 0;
-    const data = await sfFetch(`
-      query GetCart($id: ID!) { cart(id: $id) { totalQuantity } }
-    `, { id });
+    const data = await sfFetch(`query GetCart($id: ID!) { cart(id: $id) { totalQuantity } }`, { id });
     return Number(data?.cart?.totalQuantity || 0);
   } catch { return 0; }
 }
 
-// Prefer Storefront (we mirror adds there), but still read /cart.js if available.
+// Choose the best count we can show
 async function refreshBadge() {
+  const shadow = getShadowQty();
   const [sfQty, jsQty] = await Promise.all([getCountFromStorefront(), getCountFromCartJs()]);
-  const qty = Math.max(sfQty, jsQty);
-  if (DEBUG) console.log('[badge]', { sfQty, jsQty, chosen: qty });
+  const qty = Math.max(shadow, sfQty, jsQty);
+  if (DEBUG) console.log('[badge]', { shadow, sfQty, jsQty, chosen: qty });
   setBadge(qty);
 }
 
-
 // ================= ONE NAMED CART TAB, ALWAYS =================
+// Robust focus/open for mobile/desktop
+function focusCartTab() {
+  // Try to grab the existing named tab and focus it
+  let w = null;
+  try { w = window.open('', CART_NAME); } catch {}
+  try { if (w) w.focus(); } catch {}
+  return w;
+}
+
 function openInCartTab(url) {
+  // Use an <a target="SHOPIFY_CART"> click to guarantee "reuse by name"
   const a = document.createElement('a');
   a.href = url;
-  a.target = CART_NAME;   // reuse named tab
+  a.target = CART_NAME;
   a.rel = 'noreferrer';
   a.style.display = 'none';
   document.body.appendChild(a);
@@ -107,31 +126,35 @@ function openInCartTab(url) {
 }
 
 function primeCartTab() {
+  // Focus if it exists; still send a navigation so iOS brings it forward
+  focusCartTab();
   openInCartTab(CART);
 }
 
-// Add to the Online Store cart AND mirror to Storefront (for the badge).
+// Add to Online Store cart AND mirror to Storefront (for badge); always reuse named tab
 function addLineGET(variantId, qty) {
-  // Mirror to Storefront first (fire-and-forget)
-  sfAddLine(variantId, qty);
-
-  // Then navigate the named cart tab to /cart/add (this is the cart users see)
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
+
+  // Mirror to Storefront (for badge consistency)
+  sfAddLine(id, q);
+  bumpShadow(q); // update shadow immediately
+
+  // Bring the existing cart tab to front if present, then navigate it to /cart/add
+  focusCartTab();
   const url = `${CART_ADD}?id=${encodeURIComponent(id)}&quantity=${q}&return_to=%2Fcart&_=${Date.now()}`;
   openInCartTab(url);
 
-  // Update badge
-  setTimeout(refreshBadge, 1200);
-  setTimeout(refreshBadge, 3000);
-  setTimeout(refreshBadge, 6000);
+  // Update badge soon after
+  setTimeout(refreshBadge, 900);
+  setTimeout(refreshBadge, 2500);
+  setTimeout(refreshBadge, 5000);
 }
 
 function addTwoSequentially(v1, q1, v2, q2) {
   addLineGET(v1, q1);
   setTimeout(() => addLineGET(v2, q2), 500);
 }
-
 
 // ================= MOBILE NAV & SCROLL =================
 function setNavHeightVar() {
@@ -164,18 +187,20 @@ function scrollToEl(el) {
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
 
-
 // ================= BOOT =================
 document.addEventListener('DOMContentLoaded', async () => {
   try { await ensureCart(); } catch {}
 
-  // Cart links reuse the SAME named tab
+  // Cart links: focus+reuse the same named tab and navigate to /cart
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
     el.setAttribute('href', CART);
     el.setAttribute('target', CART_NAME);
     el.removeAttribute('rel');
-    el.addEventListener('click', () => {
-      setTimeout(refreshBadge, 1200);
+    el.addEventListener('click', (e) => {
+      e.preventDefault();               // we’ll handle focus + nav
+      focusCartTab();                   // bring existing tab forward on mobile
+      openInCartTab(CART);              // ensure it navigates/refreshes
+      setTimeout(refreshBadge, 1000);
       setTimeout(refreshBadge, 3000);
     });
   });
@@ -207,6 +232,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Badge lifecycle
+  // Seed with shadow (so it isn't 0 on first paint), then refresh from real sources
+  setBadge(getShadowQty());
   await refreshBadge();
   setInterval(refreshBadge, 15000);
   document.addEventListener('visibilitychange', () => {
@@ -217,7 +244,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   try { initFilters(); } catch (e) { if (DEBUG) console.warn('initFilters error', e); }
   loadProducts().catch(err => console.error('loadProducts failed:', err));
 });
-
 
 // ================= DATA LOAD =================
 async function loadProducts() {
@@ -244,8 +270,14 @@ async function loadProducts() {
   }
 
   wireCards(items);
-}
 
+  // Finish any pending scroll (e.g., Humvee insert hotspot)
+  if (__pendingScrollSel) {
+    const el = document.querySelector(__pendingScrollSel);
+    if (el) scrollToEl(el);
+    __pendingScrollSel = null;
+  }
+}
 
 // ================= RENDER =================
 function productCard(p) {
@@ -313,7 +345,6 @@ function productCard(p) {
   </div>`;
 }
 
-
 // ================= WIRING =================
 function wireCards(items) {
   document.querySelectorAll('.card').forEach(card => {
@@ -330,8 +361,11 @@ function wireCards(items) {
         if (!variantId) { if (DEBUG) console.warn('[cart] missing variantId'); return; }
         primeCartTab();
         if (coat && coat.checked && product.powdercoat_variant_id) {
+          // Mirror shadow qty for both lines
+          bumpShadow(q + 1);
           addTwoSequentially(variantId, q, product.powdercoat_variant_id, 1);
         } else {
+          bumpShadow(q);
           addLineGET(variantId, q);
         }
       });
@@ -375,14 +409,15 @@ function wireCards(items) {
       if (!variantId) { if (DEBUG) console.warn('[cart] no variantId resolved'); return; }
       primeCartTab();
       if (coat && coat.checked && product.powdercoat_variant_id) {
+        bumpShadow(q + 1);
         addTwoSequentially(variantId, q, product.powdercoat_variant_id, 1);
       } else {
+        bumpShadow(q);
         addLineGET(variantId, q);
       }
     });
   });
 }
-
 
 // ================= FILTERS =================
 function initFilters() {
@@ -412,7 +447,6 @@ function updateUrlFromFilters() {
   history.replaceState({}, '', newUrl);
 }
 
-
 // ================= HOTSPOTS =================
 document.addEventListener('click', (e) => {
   const spot = e.target.closest('.hotspot');
@@ -420,7 +454,11 @@ document.addEventListener('click', (e) => {
   const sel = spot.getAttribute('data-target');
   if (!sel) return;
   const target = document.querySelector(sel);
-  if (!target) { if (DEBUG) console.warn('Hotspot target not found:', sel); return; }
-  scrollToEl(target);
-  target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
+  if (target) {
+    scrollToEl(target);
+    target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
+  } else {
+    // remember to scroll once products render
+    __pendingScrollSel = sel;
+  }
 });
