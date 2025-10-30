@@ -1,11 +1,10 @@
- // ============== CONFIG ==============
-const SHOPIFY  = { shop: 'tacticaloffroad.myshopify.com' };
-const CART     = `https://${SHOPIFY.shop}/cart`;
-const CART_JS  = `https://${SHOPIFY.shop}/cart.js`;
-const CART_ADD = `https://${SHOPIFY.shop}/cart/add`;
-const CART_NAME = 'SHOPIFY_CART';
 
-let cartWin = null; // single named window/tab ref
+// ============== CONFIG ==============
+const SHOPIFY   = { shop: 'tacticaloffroad.myshopify.com' };
+const CART      = `https://${SHOPIFY.shop}/cart`;
+const CART_JS   = `https://${SHOPIFY.shop}/cart.js`;
+const CART_ADD  = `https://${SHOPIFY.shop}/cart/add`;
+const CART_NAME = 'SHOPIFY_CART';
 
 // ============== BADGE (trust Shopify only) ==============
 function setBadge(n) {
@@ -15,41 +14,38 @@ function setBadge(n) {
 async function updateCartCount() {
   try {
     const r = await fetch(CART_JS, { credentials: 'include', cache: 'no-store', mode: 'cors' });
-    if (!r.ok) return;
+    if (!r.ok) return; // keep last known on failure
     const data = await r.json();
     setBadge(Number(data.item_count) || 0);
   } catch {}
 }
 
-// ============== CART WINDOW HELPERS ==============
-// Always reuse the *named* window. Using "" (empty URL) avoids about:blank flashes.
-function ensureCartWindow() {
-  // Reacquire by name every click (robust if user navigated the tab elsewhere)
-  cartWin = window.open('', CART_NAME);
-  try { if (cartWin) cartWin.opener = null; } catch {}
-  try { cartWin && cartWin.focus(); } catch {}
-  return cartWin || null;
-}
-function navCart(url) {
-  const w = ensureCartWindow();
-  if (!w) { window.location.href = url; return; } // popup blocked fallback
-  try { w.location.href = url; } catch {}
+// ============== SINGLE-TAB CART STRATEGY ==============
+// 1) Prime a single named tab via <a target="SHOPIFY_CART"> (most robust across browsers)
+// 2) POST /cart/add into the same named tab using form.target = SHOPIFY_CART
+
+function primeCartWindow() {
+  const a = document.createElement('a');
+  a.href = CART;
+  a.target = CART_NAME;        // guarantees reuse of same named tab
+  a.rel = 'noreferrer';        // avoid opener entanglement
+  document.body.appendChild(a);
+  a.click();                   // browser opens/reuses SHOPIFY_CART
+  a.remove();
 }
 
-// ============== ADD TO CART (POST via hidden form targeted to SHOPIFY_CART) ==============
-// This pattern is the most reliable across Safari/iOS/Android/desktop.
 function postCartAdd(variantId, qty) {
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
 
-  // Ensure the named window exists & is focused (user gesture context)
-  ensureCartWindow();
+  // Step 1: ensure the named cart tab exists (and has cookies set)
+  primeCartWindow();
 
-  // Build a throwaway form
+  // Step 2: submit hidden form into that same named tab
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = CART_ADD;
-  form.target = CART_NAME; // <- send into the same named tab
+  form.target = CART_NAME;
 
   const inpId = document.createElement('input');
   inpId.type = 'hidden'; inpId.name = 'id'; inpId.value = id;
@@ -63,18 +59,20 @@ function postCartAdd(variantId, qty) {
   form.appendChild(inpId);
   form.appendChild(inpQty);
   form.appendChild(returnTo);
-
   document.body.appendChild(form);
-  form.submit();          // Navigate the named window to /cart (after add)
-  form.remove();          // Clean up
 
-  // Pull the real count after Shopify processes the add
-  setTimeout(updateCartCount, 1200);
-  setTimeout(updateCartCount, 3000);
-  setTimeout(updateCartCount, 6000);
+  // small delay so Safari/iOS finishes opening/reusing the named tab
+  setTimeout(() => {
+    form.submit();
+    form.remove();
+    // sync count shortly after
+    setTimeout(updateCartCount, 1200);
+    setTimeout(updateCartCount, 3000);
+    setTimeout(updateCartCount, 6000);
+  }, 120);
 }
 
-// ============== MOBILE NAV HELPERS (yours) ==============
+// ============== MOBILE NAV HELPERS (unchanged) ==============
 function setNavHeightVar() {
   const nav = document.querySelector('.nav');
   if (!nav) return;
@@ -97,15 +95,14 @@ function closeMobileMenu(toggle, menu) {
 
 // ============== BOOT ==============
 document.addEventListener('DOMContentLoaded', () => {
-  // Make all cart links reuse the SAME named tab
+  // Make all cart links reuse the SAME named tab (no JS window.open; let browser handle)
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
     el.setAttribute('href', CART);
-    el.setAttribute('target', CART_NAME); // reuse name (not _blank)
-    el.removeAttribute('rel');            // allow reuse of named window
-    el.addEventListener('click', (e) => {
-      e.preventDefault();
-      navCart(CART);
-      setTimeout(updateCartCount, 1000);
+    el.setAttribute('target', CART_NAME);  // reuse, not _blank
+    el.removeAttribute('rel');             // keep named relationship
+    // no preventDefault — let it open the named tab
+    el.addEventListener('click', () => {
+      setTimeout(updateCartCount, 1200);
       setTimeout(updateCartCount, 3000);
     });
   });
@@ -136,16 +133,19 @@ document.addEventListener('DOMContentLoaded', () => {
     mq.addEventListener?.('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
   }
 
-  // First badge + periodic sync
+  // Initial badge + periodic sync + refresh on focus
   updateCartCount();
   setInterval(updateCartCount, 15000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') updateCartCount();
+  });
 
   // Filters + products
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
   loadProducts().catch(err => console.error('loadProducts failed', err));
 });
 
-// ============== DATA LOAD ==============
+// ============== DATA LOAD (unchanged from your working version) ==============
 async function loadProducts() {
   const res = await fetch('assets/products.json', { cache: 'no-store' });
   if (!res.ok) { console.error('products.json fetch failed:', res.status, res.statusText); return; }
@@ -170,7 +170,7 @@ async function loadProducts() {
   wireCards(items);
 }
 
-// ============== RENDER ==============
+// ============== RENDER (unchanged) ==============
 function productCard(p) {
   if (p.simple) {
     return `
@@ -238,13 +238,15 @@ function productCard(p) {
   </div>`;
 }
 
-// ============== WIRING ==============
+// ============== WIRING (unchanged) ==============
 function wireCards(items) {
   document.querySelectorAll('.card').forEach(card => {
     const product = items.find(x => x.id === card.dataset.id);
     const btn  = card.querySelector('.add');
     const qty  = card.querySelector('.qty');
     const coat = card.querySelector('.powder');
+
+    if (!product || !btn) return;
 
     if (product.simple) {
       const varSel = card.querySelector('.simple-variant');
@@ -301,7 +303,7 @@ function wireCards(items) {
   });
 }
 
-// ============== FILTERS ==============
+// ============== FILTERS (unchanged) ==============
 function initFilters() {
   document.querySelectorAll('.toggle').forEach(t => {
     t.addEventListener('click', () => {
@@ -329,14 +331,3 @@ function updateUrlFromFilters() {
   history.replaceState({}, '', newUrl);
 }
 
-// (Optional) hotspot demo from your snippet
-document.addEventListener('click', (e) => {
-  const spot = e.target.closest('.hotspot');
-  if (!spot) return;
-  const sel = spot.getAttribute('data-target');
-  if (!sel) return;
-  const target = document.querySelector(sel);
-  if (!target) { console.warn('Hotspot target not found:', sel); return; }
-  target.scrollIntoView({ block: 'center' });
-  target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
-});
