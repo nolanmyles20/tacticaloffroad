@@ -1,16 +1,15 @@
+<script>
 // ============== CONFIG ==============
-const SHOPIFY  = { shop: 'tacticaloffroad.myshopify.com' };
-const CART     = `https://${SHOPIFY.shop}/cart`;
-const CART_JS  = `https://${SHOPIFY.shop}/cart.js`;
-const CART_ADD = `https://${SHOPIFY.shop}/cart/add`;
+const SHOPIFY   = { shop: 'tacticaloffroad.myshopify.com' };
+const CART      = `https://${SHOPIFY.shop}/cart`;
+const CART_JS   = `https://${SHOPIFY.shop}/cart.js`;
+const CART_ADD  = `https://${SHOPIFY.shop}/cart/add`;
 const CART_NAME = 'SHOPIFY_CART';
 
-let cartWin = null; // single named window/tab ref
+// Used if a hotspot is clicked before products render
+let __pendingScrollSel = null;
 
-// Pending scroll target if hotspot clicked before products render
-let __pendingScrollSel = null; // NEW
-
-// ============== BADGE (trust Shopify only) ==============
+// ============== BADGE (source of truth = Shopify) ==============
 function setBadge(n) {
   const el = document.getElementById('cart-count');
   if (el) el.textContent = String(n ?? 0);
@@ -21,37 +20,36 @@ async function updateCartCount() {
     if (!r.ok) return;
     const data = await r.json();
     setBadge(Number(data.item_count) || 0);
-  } catch {}
+  } catch { /* ignore */ }
 }
 
-// ============== CART WINDOW HELPERS ==============
-// Always reuse the *named* window. Using "" (empty URL) avoids about:blank flashes.
-function ensureCartWindow() {
-  // Reacquire by name every click (robust if user navigated the tab elsewhere)
-  cartWin = window.open('', CART_NAME);
-  try { if (cartWin) cartWin.opener = null; } catch {}
-  try { cartWin && cartWin.focus(); } catch {}
-  return cartWin || null;
-}
-function navCart(url) {
-  const w = ensureCartWindow();
-  if (!w) { window.location.href = url; return; } // popup blocked fallback
-  try { w.location.href = url; } catch {}
+// ============== CART HELPERS ==============
+// 1) "Prime" named cart window by opening /cart in SHOPIFY_CART.
+// 2) Then submit POST /cart/add into the same named window.
+function primeCartWindow() {
+  // create a temporary link that opens/reuses the named window
+  const a = document.createElement('a');
+  a.href = CART;
+  a.target = CART_NAME;     // guarantees reuse of same named tab
+  a.rel = 'noreferrer';     // avoid opener side-effects
+  // must be in DOM for some browsers to treat it as a real click
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
-// ============== ADD TO CART (POST via hidden form targeted to SHOPIFY_CART) ==============
 function postCartAdd(variantId, qty) {
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
 
-  // Ensure the named window exists & is focused (user gesture context)
-  ensureCartWindow();
+  // Step 1: make sure the named cart window exists and loads /cart (sets cookies)
+  primeCartWindow();
 
-  // Build a throwaway form
+  // Step 2: submit a hidden form to /cart/add targeting that same named window
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = CART_ADD;
-  form.target = CART_NAME; // <- send into the same named tab
+  form.target = CART_NAME;
 
   const inpId = document.createElement('input');
   inpId.type = 'hidden'; inpId.name = 'id'; inpId.value = id;
@@ -67,16 +65,19 @@ function postCartAdd(variantId, qty) {
   form.appendChild(returnTo);
 
   document.body.appendChild(form);
-  form.submit();
-  form.remove();
 
-  // Pull the real count after Shopify processes the add
-  setTimeout(updateCartCount, 1200);
-  setTimeout(updateCartCount, 3000);
-  setTimeout(updateCartCount, 6000);
+  // Small delay helps iOS/Safari finish priming the named window before the POST
+  setTimeout(() => {
+    form.submit();
+    form.remove();
+    // Sync real count shortly after
+    setTimeout(updateCartCount, 1200);
+    setTimeout(updateCartCount, 3000);
+    setTimeout(updateCartCount, 6000);
+  }, 120);
 }
 
-// ============== MOBILE NAV HELPERS (yours) ==============
+// ============== MOBILE NAV HELPERS (unchanged) ==============
 function setNavHeightVar() {
   const nav = document.querySelector('.nav');
   if (!nav) return;
@@ -98,31 +99,27 @@ function closeMobileMenu(toggle, menu) {
 }
 
 // ============== SMART SCROLL (hotspots) ==============
-// Scroll with offset for fixed nav, always on the window (robust)  // NEW
 function scrollToEl(el) {
   if (!el) return;
   const navHVar = getComputedStyle(document.documentElement).getPropertyValue('--nav-h').trim();
   const navH = parseInt(navHVar || '0', 10) || 0;
-  const extra = 20; // small breathing room
+  const extra = 20;
   const top = el.getBoundingClientRect().top + window.pageYOffset - (navH + extra);
   window.scrollTo({ top, behavior: 'smooth' });
-  // flash animation (if your CSS adds .flash)
-  el.classList.remove('flash');
-  void el.offsetWidth;
-  el.classList.add('flash');
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
 
 // ============== BOOT ==============
 document.addEventListener('DOMContentLoaded', () => {
-  // Make all cart links reuse the SAME named tab
+  // All cart links reuse the SAME named window/tab (let the browser handle it)
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
     el.setAttribute('href', CART);
-    el.setAttribute('target', CART_NAME);
-    el.removeAttribute('rel');
-    el.addEventListener('click', (e) => {
-      e.preventDefault();
-      navCart(CART);
-      setTimeout(updateCartCount, 1000);
+    el.setAttribute('target', CART_NAME);   // reuse, not _blank
+    el.removeAttribute('rel');              // keep named-window relationship
+    // Don't preventDefault; allow normal navigation so the named tab is reused
+    el.addEventListener('click', () => {
+      // After the cart is visible, sync count soon
+      setTimeout(updateCartCount, 1200);
       setTimeout(updateCartCount, 3000);
     });
   });
@@ -153,9 +150,12 @@ document.addEventListener('DOMContentLoaded', () => {
     mq.addEventListener?.('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
   }
 
-  // First badge + periodic sync
+  // Initial badge + keep in sync
   updateCartCount();
   setInterval(updateCartCount, 15000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') updateCartCount();
+  });
 
   // Filters + products
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
@@ -186,7 +186,6 @@ async function loadProducts() {
 
   wireCards(items);
 
-  // If a hotspot was clicked before cards existed, finish the scroll now   // NEW
   if (__pendingScrollSel) {
     const el = document.querySelector(__pendingScrollSel);
     if (el) scrollToEl(el);
@@ -198,7 +197,7 @@ async function loadProducts() {
 function productCard(p) {
   if (p.simple) {
     return `
-    <div class="card" data-id="${p.id}" id="product-${p.id}"> <!-- id added -->  <!-- NEW -->
+    <div class="card" data-id="${p.id}" id="product-${p.id}">
       <img src="${p.image}" alt="${p.title}">
       <div class="content">
         <div class="badge">${p.platforms.join(' • ')}</div>
@@ -229,7 +228,7 @@ function productCard(p) {
                ? Object.keys(vmap[o1][o2]) : [];
 
   return `
-  <div class="card" data-id="${p.id}" id="product-${p.id}"> <!-- id added -->   <!-- NEW -->
+  <div class="card" data-id="${p.id}" id="product-${p.id}">
     <img src="${p.image}" alt="${p.title}">
     <div class="content">
       <div class="badge">${p.platforms.join(' • ')}</div>
@@ -353,7 +352,7 @@ function updateUrlFromFilters() {
   history.replaceState({}, '', newUrl);
 }
 
-// ============== HOTSPOT HANDLER (robust) ==============  // CHANGED
+// ============== HOTSPOT HANDLER ==============
 document.addEventListener('click', (e) => {
   const spot = e.target.closest('.hotspot');
   if (!spot) return;
@@ -364,7 +363,7 @@ document.addEventListener('click', (e) => {
   if (target) {
     scrollToEl(target);
   } else {
-    // If not rendered yet, remember and scroll after loadProducts completes
-    __pendingScrollSel = sel;
+    __pendingScrollSel = sel; // wait until loadProducts finishes
   }
 });
+</script>
