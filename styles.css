@@ -445,32 +445,29 @@ html { scroll-behavior: smooth; }
 
   .links{ display:none !important; }  /* already in your CSS, just reaffirming */
 }
-/* =============================
-   FULL-WIDTH BOTTOM HERO (BLACK)
-   ============================= */
-main.container > .hero:last-of-type {
-  /* break out of .container’s max-width */
+/* ===== FULL-BLEED FOOTER ===== */
+.footer{
+  /* full width across viewport */
   width: 100vw;
   margin-left: 50%;
   transform: translateX(-50%);
 
-  background: #000;
-  padding: 36px 0;
+  background:#000;
+  color:#cfcfcf;                /* light gray text */
+  text-align:center;
 
-  /* top + bottom gray borders */
-  border-top: 2px solid #d3d4d6;
-  border-bottom: 2px solid #d3d4d6;
-  border-left: none;
-  border-right: none;
+  padding: 18px 24px calc(18px + env(safe-area-inset-bottom,0));
+  border-top:2px solid #d3d4d6;   /* gray borders */
+  border-bottom:2px solid #d3d4d6;
 
-  text-align: center;
+  /* ensure no card/bevel styles leak in */
+  clip-path:none; 
+  border-radius:0;
 }
 
-/* remove bevel borders for headings inside this section */
-main.container > .hero:last-of-type h1,
-main.container > .hero:last-of-type h2 {
-  background: none;
-  border: none;
-  color: #fff;
-  clip-path: none;
+/* footer links (if any) */
+.footer a{
+  color:#e0e0e0;
+  text-decoration:none;
 }
+.footer a:hover{ color:#ffffff; }
