@@ -1,86 +1,134 @@
 
 // ================= CONFIG =================
 const SHOPIFY   = { shop: 'tacticaloffroad.myshopify.com' };
-const CART      = `https://${SHOPIFY.shop}/cart`;
-const CART_JS   = `https://${SHOPIFY.shop}/cart.js`;
-const CART_ADD  = `https://${SHOPIFY.shop}/cart/add`;
-const CART_NAME = 'SHOPIFY_CART';
+const SF_TOKEN  = '7f1d57625124831f8f9c47a088e48fb8';
+const SF_URL    = `https://${SHOPIFY.shop}/api/2024-07/graphql.json`;
+
+const CART_NAME   = 'SHOPIFY_CART_TAB';    // the single, reused browser tab name
+const LS_CARTID   = 'SF_CART_ID';          // localStorage key for Storefront Cart ID
+const LS_CHECKOUT = 'SF_CHECKOUT_URL';     // localStorage key for checkout URL
+
 const DEBUG = false;
 
-// Detect iOS/Safari-ish for safer delays
-const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const PRIME_DELAY = IS_IOS ? 450 : 250;   // delay between prime and first add
-const BETWEEN_ADDS = IS_IOS ? 600 : 400;  // delay between multiple adds
+// ================= SMALL UTILS =================
+const log  = (...a)=>DEBUG&&console.log('[cart]',...a);
+const wait = (ms)=>new Promise(r=>setTimeout(r,ms));
+function setBadge(n){ const el=document.getElementById('cart-count'); if(el) el.textContent=String(n??0); }
 
-// For hotspot clicks that happen before products render
-let __pendingScrollSel = null;
-
-// ================= BADGE (Shopify = source of truth) =================
-function setBadge(n) {
-  const el = document.getElementById('cart-count');
-  if (el) el.textContent = String(n ?? 0);
+// Convert numeric Shopify variant id → Storefront Base64 GID (if needed)
+function toVariantGID(id){
+  const s = String(id).trim();
+  if (s.startsWith('gid://')) return btoa(s);
+  try { if (atob(s).startsWith('gid://')) return s; } catch {}
+  return btoa(`gid://shopify/ProductVariant/${s}`);
 }
-async function updateCartCount() {
+
+// Always open/reuse a single named cart tab
+function openInCartTab(url){
+  const a = document.createElement('a');
+  a.href   = url;
+  a.target = CART_NAME;   // this ensures reuse of the same tab
+  a.rel    = 'noreferrer';
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// ================= STOREFRONT API CORE =================
+async function sf(query, variables){
+  const r = await fetch(SF_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type':'application/json',
+      'X-Shopify-Storefront-Access-Token': SF_TOKEN
+    },
+    body: JSON.stringify({ query, variables })
+  });
+  const j = await r.json();
+  if (j.errors) throw new Error(JSON.stringify(j.errors));
+  return j.data;
+}
+
+async function ensureCart(){
+  let id = localStorage.getItem(LS_CARTID);
+  let checkoutUrl = localStorage.getItem(LS_CHECKOUT);
+  if (id && checkoutUrl) return { id, checkoutUrl };
+
+  const q = `
+    mutation CreateCart {
+      cartCreate {
+        cart { id checkoutUrl totalQuantity }
+        userErrors { field message }
+      }
+    }`;
+  const d = await sf(q, {});
+  const cart = d.cartCreate.cart;
+  id = cart.id;
+  checkoutUrl = cart.checkoutUrl;
+  localStorage.setItem(LS_CARTID, id);
+  localStorage.setItem(LS_CHECKOUT, checkoutUrl);
+  log('created cart', id);
+  return { id, checkoutUrl };
+}
+
+async function getCartQuantity(){
+  const id = localStorage.getItem(LS_CARTID);
+  if (!id) return 0;
+  const q = `query GetCart($id: ID!){ cart(id:$id){ totalQuantity } }`;
   try {
-    const r = await fetch(CART_JS, { credentials: 'include', cache: 'no-store', mode: 'cors' });
-    if (!r.ok) return;
-    const data = await r.json();
-    const cnt = Number(data.item_count) || 0;
-    if (DEBUG) console.log('[cart] count', cnt);
-    setBadge(cnt);
-  } catch (e) {
-    if (DEBUG) console.warn('[cart] count fetch failed', e);
-  }
+    const d = await sf(q, { id });
+    return Number(d.cart?.totalQuantity ?? 0);
+  } catch { return 0; }
 }
 
-// ================= ONE NAMED CART TAB, ALWAYS =================
-// Keep a singleton anchor so the browser truly reuses the same named tab.
-let __cartAnchor = null;
-function getCartAnchor() {
-  if (!__cartAnchor) {
-    __cartAnchor = document.createElement('a');
-    __cartAnchor.style.display = 'none';
-    __cartAnchor.target = CART_NAME;   // the magic: named target
-    // IMPORTANT: do NOT set rel="noreferrer" here—Safari may open new tabs
-    document.body.appendChild(__cartAnchor);
-  }
-  return __cartAnchor;
-}
-function openInCartTab(url) {
-  const a = getCartAnchor();
-  a.href = url;
-  a.click();           // user-gesture context from the button click handler
-}
-
-// Prime cart tab (loads /cart) so cookies/state are set, then we can navigate it again for adds.
-function primeCartTab() {
-  if (DEBUG) console.log('[cart] prime /cart');
-  openInCartTab(CART);
+async function addLine(variantId, qty){
+  const cart = await ensureCart();
+  const q = `
+    mutation AddLines($cartId: ID!, $lines: [CartLineInput!]!) {
+      cartLinesAdd(cartId: $cartId, lines: $lines) {
+        cart { id totalQuantity checkoutUrl }
+        userErrors { field message }
+      }
+    }`;
+  const vars = {
+    cartId: cart.id,
+    lines: [{ merchandiseId: toVariantGID(variantId), quantity: Math.max(1, Number(qty)||1) }]
+  };
+  const d = await sf(q, vars);
+  const errs = d.cartLinesAdd.userErrors;
+  if (errs && errs.length) throw new Error(errs.map(e=>e.message).join('; '));
+  const c = d.cartLinesAdd.cart;
+  if (c.checkoutUrl) localStorage.setItem(LS_CHECKOUT, c.checkoutUrl);
+  return c.totalQuantity ?? 0;
 }
 
-// Add a single line via GET, then show /cart (return_to=/cart). Cache-buster included.
-function addLineGET(variantId, qty) {
-  const id = String(variantId);
-  const q  = Math.max(1, Number(qty) || 1);
-  const url = `${CART_ADD}?id=${encodeURIComponent(id)}&quantity=${q}&return_to=%2Fcart&_=${Date.now()}`;
-  if (DEBUG) console.log('[cart] add', { id, q, url });
-  openInCartTab(url);
-
-  // Sync real count after Shopify processes
-  setTimeout(updateCartCount, 1200);
-  setTimeout(updateCartCount, 3000);
-  setTimeout(updateCartCount, 6000);
+async function addTwoLinesSequential(v1,q1,v2,q2){
+  await addLine(v1,q1);
+  await wait(350);                 // avoids racing on some mobile browsers
+  await addLine(v2,q2);
 }
 
-// Sequence: prime → (delay) → add base → (delay) → add powder (optional)
-function addWithPrimeSequence(baseId, baseQty, powderId = null, powderQty = 0) {
-  primeCartTab();
-  setTimeout(() => {
-    addLineGET(baseId, baseQty);
-    if (powderId) {
-      setTimeout(() => addLineGET(powderId, powderQty), BETWEEN_ADDS);
+async function handleAddToCart(variantId, qty, powderVariantId){
+  try{
+    const cart = await ensureCart();
+    if (powderVariantId){
+      await addTwoLinesSequential(variantId, qty, powderVariantId, 1);
+    } else {
+      await addLine(variantId, qty);
     }
-  }, PRIME_DELAY);
+    const n = await getCartQuantity();
+    setBadge(n);
+    openInCartTab(localStorage.getItem(LS_CHECKOUT) || cart.checkoutUrl);
+  }catch(err){
+    console.error('Add to cart failed', err);
+    const c = await ensureCart();
+    openInCartTab(c.checkoutUrl); // still show the cart tab even if add failed
+  }
+}
+
+async function refreshBadge(){
+  setBadge(await getCartQuantity());
 }
 
 // ================= MOBILE NAV HELPERS =================
@@ -104,7 +152,7 @@ function closeMobileMenu(toggle, menu) {
   document.body.classList.remove('no-scroll');
 }
 
-// ================= SMOOTH SCROLL (hotspots) =================
+// ================= HOTSPOT SCROLL =================
 function scrollToEl(el) {
   if (!el) return;
   const navHVar = getComputedStyle(document.documentElement).getPropertyValue('--nav-h').trim();
@@ -115,86 +163,23 @@ function scrollToEl(el) {
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
 
-// ================= BOOT =================
-document.addEventListener('DOMContentLoaded', () => {
-  // Make every cart link reuse the SAME named tab
-  [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
-    el.setAttribute('href', CART);
-    el.setAttribute('target', CART_NAME);   // reuse; NOT _blank
-    el.removeAttribute('rel');              // let named target work normally
-    // No preventDefault—let it open normally, then refresh badge
-    el.addEventListener('click', () => {
-      setTimeout(updateCartCount, 1200);
-      setTimeout(updateCartCount, 3000);
-    });
-  });
-
-  // Hotspots
-  document.addEventListener('click', (e) => {
-    const spot = e.target.closest('.hotspot');
-    if (!spot) return;
-    const sel = spot.getAttribute('data-target');
-    if (!sel) return;
-    const target = document.querySelector(sel);
-    if (target) scrollToEl(target);
-    else __pendingScrollSel = sel;
-  });
-
-  // Mobile menu toggle
-  const toggle = document.querySelector('.nav-toggle');
-  const menu   = document.getElementById('main-menu');
-
-  setNavHeightVar();
-  window.addEventListener('resize', setNavHeightVar);
-  window.addEventListener('orientationchange', setNavHeightVar);
-
-  if (toggle && menu) {
-    toggle.addEventListener('click', () => {
-      menu.classList.contains('is-open') ? closeMobileMenu(toggle, menu) : openMobileMenu(toggle, menu);
-    });
-    menu.addEventListener('click', (e) => { if (e.target.closest('a')) closeMobileMenu(toggle, menu); });
-    document.addEventListener('click', (e) => {
-      if (!menu.classList.contains('is-open')) return;
-      const inMenu = e.target.closest('#main-menu');
-      const onTgl  = e.target.closest('.nav-toggle');
-      if (!inMenu && !onTgl) closeMobileMenu(toggle, menu);
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && menu.classList.contains('is-open')) closeMobileMenu(toggle, menu);
-    });
-    const mq = window.matchMedia('(min-width: 801px)');
-    mq.addEventListener?.('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
-  }
-
-  // First badge + keep in sync (also when user returns focus)
-  updateCartCount();
-  setInterval(updateCartCount, 15000);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') updateCartCount();
-  });
-
-  // Filters + products
-  try { initFilters(); } catch (e) { if (DEBUG) console.warn('initFilters error', e); }
-  loadProducts().catch(err => console.error('loadProducts failed', err));
-});
-
-// ================= DATA LOAD =================
+// ================= DATA LOAD (products) =================
 async function loadProducts() {
   const res = await fetch('assets/products.json', { cache: 'no-store' });
   if (!res.ok) { console.error('products.json fetch failed:', res.status, res.statusText); return; }
   const items = await res.json();
 
-  // Category pages
+  // Category grids
   document.querySelectorAll('#product-grid').forEach(grid => {
     const cat = grid.getAttribute('data-category');
-    const activeTags = getActiveTags?.() || [];
+    const activeTags = getActiveTags();
     const subset = items
       .filter(p => p.platforms.includes(cat))
       .filter(p => activeTags.length === 0 || activeTags.every(t => p.tags.includes(t)));
     grid.innerHTML = subset.map(p => productCard(p)).join('') || '<p>No products match those filters.</p>';
   });
 
-  // Featured (home)
+  // Featured
   const fg = document.getElementById('featured-grid');
   if (fg) {
     const platforms = ['Humvee', 'Jeep', 'AR-15', 'Cross-Karts'];
@@ -203,21 +188,13 @@ async function loadProducts() {
   }
 
   wireCards(items);
-
-  // Complete any pending hotspot scroll after cards exist
-  if (__pendingScrollSel) {
-    const el = document.querySelector(__pendingScrollSel);
-    if (el) scrollToEl(el);
-    __pendingScrollSel = null;
-  }
 }
 
-// ================= RENDER =================
+// ================= RENDER (cards) =================
 function productCard(p) {
-  const cardId = `product-${p.id}`;
   if (p.simple) {
     return `
-    <div class="card" data-id="${p.id}" id="${cardId}">
+    <div class="card" data-id="${p.id}">
       <img src="${p.image}" alt="${p.title}">
       <div class="content">
         <div class="badge">${p.platforms.join(' • ')}</div>
@@ -248,7 +225,7 @@ function productCard(p) {
                ? Object.keys(vmap[o1][o2]) : [];
 
   return `
-  <div class="card" data-id="${p.id}" id="${cardId}">
+  <div class="card" data-id="${p.id}">
     <img src="${p.image}" alt="${p.title}">
     <div class="content">
       <div class="badge">${p.platforms.join(' • ')}</div>
@@ -279,7 +256,7 @@ function productCard(p) {
   </div>`;
 }
 
-// ================= WIRING =================
+// ================= WIRING (cards → add-to-cart) =================
 function wireCards(items) {
   document.querySelectorAll('.card').forEach(card => {
     const product = items.find(x => x.id === card.dataset.id);
@@ -287,21 +264,24 @@ function wireCards(items) {
     const qty  = card.querySelector('.qty');
     const coat = card.querySelector('.powder');
 
-    if (product?.simple) {
+    if (!btn) return;
+
+    if (product.simple) {
       const varSel = card.querySelector('.simple-variant');
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const q = Math.max(1, parseInt(qty?.value, 10) || 1);
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
-        if (variantId) {
-          addWithPrimeSequence(variantId, q, (coat && coat.checked && product.powdercoat_variant_id) ? product.powdercoat_variant_id : null, 1);
-        } else if (DEBUG) {
-          console.warn('[cart] missing variantId');
-        }
+        if (!variantId) return;
+        await handleAddToCart(
+          variantId,
+          q,
+          (coat && coat.checked && product.powdercoat_variant_id) ? product.powdercoat_variant_id : null
+        );
       });
       return;
     }
 
-    const vmap = product?.variant_ids || {};
+    const vmap = product.variant_ids || {};
     const o1Sel = card.querySelector('.opt1');
     const o2Sel = card.querySelector('.opt2');
     const o3Sel = card.querySelector('.opt3');
@@ -311,18 +291,20 @@ function wireCards(items) {
       const o2Vals = Object.keys(vmap[o1] || {});
       if (o2Sel) o2Sel.innerHTML = o2Vals.map(v => `<option value="${v}">${v}</option>`).join('');
       const o2 = o2Sel ? o2Sel.value : o2Vals[0];
-      const o3Vals = (vmap[o1] && vmap[o1][o2] && typeof vmap[o1][o2] === 'object') ? Object.keys(vmap[o1][o2]) : [];
+      const o3Vals = (vmap[o1] && vmap[o1][o2] && typeof vmap[o1][o2] === 'object')
+        ? Object.keys(vmap[o1][o2]) : [];
       if (o3Sel) o3Sel.innerHTML = o3Vals.map(v => `<option value="${v}">${v}</option>`).join('');
     });
 
     o2Sel?.addEventListener('change', () => {
       const o1 = o1Sel ? o1Sel.value : Object.keys(vmap)[0];
       const o2 = o2Sel.value;
-      const o3Vals = (vmap[o1] && vmap[o1][o2] && typeof vmap[o1][o2] === 'object') ? Object.keys(vmap[o1][o2]) : [];
+      const o3Vals = (vmap[o1] && vmap[o1][o2] && typeof vmap[o1][o2] === 'object')
+        ? Object.keys(vmap[o1][o2]) : [];
       if (o3Sel) o3Sel.innerHTML = o3Vals.map(v => `<option value="${v}">${v}</option>`).join('');
     });
 
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const o1 = o1Sel ? o1Sel.value : Object.keys(vmap)[0];
       const o2 = o2Sel ? o2Sel.value : (vmap[o1] ? Object.keys(vmap[o1])[0] : '');
       const node = vmap[o1]?.[o2];
@@ -330,17 +312,15 @@ function wireCards(items) {
       const q  = Math.max(1, parseInt(qty?.value, 10) || 1);
 
       let variantId = null;
-      if (typeof node === 'object') variantId = node?.[o3] || null;  // 3-level
-      else variantId = vmap[o1]?.[o2] || null;                       // 2-level
+      if (typeof node === 'object') variantId = node?.[o3] || null;   // 3-level options
+      else variantId = vmap[o1]?.[o2] || null;                        // 2-level options
 
-      if (DEBUG) console.log('[cart] chosen variant', variantId, {o1, o2, o3, q});
-
-      if (variantId) {
-        const addPowder = (coat && coat.checked && product.powdercoat_variant_id) ? product.powdercoat_variant_id : null;
-        addWithPrimeSequence(variantId, q, addPowder, 1);
-      } else if (DEBUG) {
-        console.warn('[cart] no variantId resolved', { product: product.id, o1, o2, o3 });
-      }
+      if (!variantId) return;
+      await handleAddToCart(
+        variantId,
+        q,
+        (coat && coat.checked && product.powdercoat_variant_id) ? product.powdercoat_variant_id : null
+      );
     });
   });
 }
@@ -373,3 +353,68 @@ function updateUrlFromFilters() {
   history.replaceState({}, '', newUrl);
 }
 
+// ================= BOOT =================
+document.addEventListener('DOMContentLoaded', async () => {
+  // Cart button(s) always open the *current* checkout in the SAME named tab
+  const cartLinks = [...document.querySelectorAll('[data-cart-link], #cart-link')];
+  if (cartLinks.length){
+    const c = await ensureCart();
+    cartLinks.forEach(el=>{
+      el.setAttribute('href', c.checkoutUrl);
+      el.setAttribute('target', CART_NAME);
+      el.removeAttribute('rel');
+      el.addEventListener('click', () => {
+        setTimeout(refreshBadge, 1200);
+        setTimeout(refreshBadge, 3000);
+      });
+    });
+  }
+
+  // Mobile menu
+  const toggle = document.querySelector('.nav-toggle');
+  const menu   = document.getElementById('main-menu');
+
+  setNavHeightVar();
+  window.addEventListener('resize', setNavHeightVar);
+  window.addEventListener('orientationchange', setNavHeightVar);
+
+  if (toggle && menu) {
+    toggle.addEventListener('click', () => {
+      menu.classList.contains('is-open') ? closeMobileMenu(toggle, menu) : openMobileMenu(toggle, menu);
+    });
+    menu.addEventListener('click', (e) => { if (e.target.closest('a')) closeMobileMenu(toggle, menu); });
+    document.addEventListener('click', (e) => {
+      if (!menu.classList.contains('is-open')) return;
+      const inMenu = e.target.closest('#main-menu');
+      const onTgl  = e.target.closest('.nav-toggle');
+      if (!inMenu && !onTgl) closeMobileMenu(toggle, menu);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && menu.classList.contains('is-open')) closeMobileMenu(toggle, menu);
+    });
+    const mq = window.matchMedia('(min-width: 801px)');
+    mq.addEventListener?.('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
+  }
+
+  // Initial badge + keep in sync
+  await refreshBadge();
+  setInterval(refreshBadge, 15000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshBadge();
+  });
+
+  // Filters + products
+  try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
+  loadProducts().catch(err => console.error('loadProducts failed', err));
+});
+
+// ================= HOTSPOT HANDLER =================
+document.addEventListener('click', (e) => {
+  const spot = e.target.closest('.hotspot');
+  if (!spot) return;
+  const sel = spot.getAttribute('data-target');
+  if (!sel) return;
+  const target = document.querySelector(sel);
+  if (!target) return;
+  scrollToEl(target);
+});
