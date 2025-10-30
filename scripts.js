@@ -1,15 +1,13 @@
-
-// ============== CONFIG ==============
-const SHOPIFY   = { shop: 'tacticaloffroad.myshopify.com' };
-const CART      = `https://${SHOPIFY.shop}/cart`;
-const CART_JS   = `https://${SHOPIFY.shop}/cart.js`;
-const CART_ADD  = `https://${SHOPIFY.shop}/cart/add`;
+ // ============== CONFIG ==============
+const SHOPIFY  = { shop: 'tacticaloffroad.myshopify.com' };
+const CART     = `https://${SHOPIFY.shop}/cart`;
+const CART_JS  = `https://${SHOPIFY.shop}/cart.js`;
+const CART_ADD = `https://${SHOPIFY.shop}/cart/add`;
 const CART_NAME = 'SHOPIFY_CART';
 
-// Used if a hotspot is clicked before products render
-let __pendingScrollSel = null;
+let cartWin = null; // single named window/tab ref
 
-// ============== BADGE (source of truth = Shopify) ==============
+// ============== BADGE (trust Shopify only) ==============
 function setBadge(n) {
   const el = document.getElementById('cart-count');
   if (el) el.textContent = String(n ?? 0);
@@ -20,36 +18,38 @@ async function updateCartCount() {
     if (!r.ok) return;
     const data = await r.json();
     setBadge(Number(data.item_count) || 0);
-  } catch { /* ignore */ }
+  } catch {}
 }
 
-// ============== CART HELPERS ==============
-// 1) "Prime" named cart window by opening /cart in SHOPIFY_CART.
-// 2) Then submit POST /cart/add into the same named window.
-function primeCartWindow() {
-  // create a temporary link that opens/reuses the named window
-  const a = document.createElement('a');
-  a.href = CART;
-  a.target = CART_NAME;     // guarantees reuse of same named tab
-  a.rel = 'noreferrer';     // avoid opener side-effects
-  // must be in DOM for some browsers to treat it as a real click
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+// ============== CART WINDOW HELPERS ==============
+// Always reuse the *named* window. Using "" (empty URL) avoids about:blank flashes.
+function ensureCartWindow() {
+  // Reacquire by name every click (robust if user navigated the tab elsewhere)
+  cartWin = window.open('', CART_NAME);
+  try { if (cartWin) cartWin.opener = null; } catch {}
+  try { cartWin && cartWin.focus(); } catch {}
+  return cartWin || null;
+}
+function navCart(url) {
+  const w = ensureCartWindow();
+  if (!w) { window.location.href = url; return; } // popup blocked fallback
+  try { w.location.href = url; } catch {}
 }
 
+// ============== ADD TO CART (POST via hidden form targeted to SHOPIFY_CART) ==============
+// This pattern is the most reliable across Safari/iOS/Android/desktop.
 function postCartAdd(variantId, qty) {
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
 
-  // Step 1: make sure the named cart window exists and loads /cart (sets cookies)
-  primeCartWindow();
+  // Ensure the named window exists & is focused (user gesture context)
+  ensureCartWindow();
 
-  // Step 2: submit a hidden form to /cart/add targeting that same named window
+  // Build a throwaway form
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = CART_ADD;
-  form.target = CART_NAME;
+  form.target = CART_NAME; // <- send into the same named tab
 
   const inpId = document.createElement('input');
   inpId.type = 'hidden'; inpId.name = 'id'; inpId.value = id;
@@ -65,19 +65,16 @@ function postCartAdd(variantId, qty) {
   form.appendChild(returnTo);
 
   document.body.appendChild(form);
+  form.submit();          // Navigate the named window to /cart (after add)
+  form.remove();          // Clean up
 
-  // Small delay helps iOS/Safari finish priming the named window before the POST
-  setTimeout(() => {
-    form.submit();
-    form.remove();
-    // Sync real count shortly after
-    setTimeout(updateCartCount, 1200);
-    setTimeout(updateCartCount, 3000);
-    setTimeout(updateCartCount, 6000);
-  }, 120);
+  // Pull the real count after Shopify processes the add
+  setTimeout(updateCartCount, 1200);
+  setTimeout(updateCartCount, 3000);
+  setTimeout(updateCartCount, 6000);
 }
 
-// ============== MOBILE NAV HELPERS (unchanged) ==============
+// ============== MOBILE NAV HELPERS (yours) ==============
 function setNavHeightVar() {
   const nav = document.querySelector('.nav');
   if (!nav) return;
@@ -98,28 +95,17 @@ function closeMobileMenu(toggle, menu) {
   document.body.classList.remove('no-scroll');
 }
 
-// ============== SMART SCROLL (hotspots) ==============
-function scrollToEl(el) {
-  if (!el) return;
-  const navHVar = getComputedStyle(document.documentElement).getPropertyValue('--nav-h').trim();
-  const navH = parseInt(navHVar || '0', 10) || 0;
-  const extra = 20;
-  const top = el.getBoundingClientRect().top + window.pageYOffset - (navH + extra);
-  window.scrollTo({ top, behavior: 'smooth' });
-  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
-}
-
 // ============== BOOT ==============
 document.addEventListener('DOMContentLoaded', () => {
-  // All cart links reuse the SAME named window/tab (let the browser handle it)
+  // Make all cart links reuse the SAME named tab
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
     el.setAttribute('href', CART);
-    el.setAttribute('target', CART_NAME);   // reuse, not _blank
-    el.removeAttribute('rel');              // keep named-window relationship
-    // Don't preventDefault; allow normal navigation so the named tab is reused
-    el.addEventListener('click', () => {
-      // After the cart is visible, sync count soon
-      setTimeout(updateCartCount, 1200);
+    el.setAttribute('target', CART_NAME); // reuse name (not _blank)
+    el.removeAttribute('rel');            // allow reuse of named window
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      navCart(CART);
+      setTimeout(updateCartCount, 1000);
       setTimeout(updateCartCount, 3000);
     });
   });
@@ -150,12 +136,9 @@ document.addEventListener('DOMContentLoaded', () => {
     mq.addEventListener?.('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
   }
 
-  // Initial badge + keep in sync
+  // First badge + periodic sync
   updateCartCount();
   setInterval(updateCartCount, 15000);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') updateCartCount();
-  });
 
   // Filters + products
   try { initFilters(); } catch (e) { console.warn('initFilters error', e); }
@@ -185,19 +168,13 @@ async function loadProducts() {
   }
 
   wireCards(items);
-
-  if (__pendingScrollSel) {
-    const el = document.querySelector(__pendingScrollSel);
-    if (el) scrollToEl(el);
-    __pendingScrollSel = null;
-  }
 }
 
 // ============== RENDER ==============
 function productCard(p) {
   if (p.simple) {
     return `
-    <div class="card" data-id="${p.id}" id="product-${p.id}">
+    <div class="card" data-id="${p.id}">
       <img src="${p.image}" alt="${p.title}">
       <div class="content">
         <div class="badge">${p.platforms.join(' • ')}</div>
@@ -228,7 +205,7 @@ function productCard(p) {
                ? Object.keys(vmap[o1][o2]) : [];
 
   return `
-  <div class="card" data-id="${p.id}" id="product-${p.id}">
+  <div class="card" data-id="${p.id}">
     <img src="${p.image}" alt="${p.title}">
     <div class="content">
       <div class="badge">${p.platforms.join(' • ')}</div>
@@ -352,18 +329,14 @@ function updateUrlFromFilters() {
   history.replaceState({}, '', newUrl);
 }
 
-// ============== HOTSPOT HANDLER ==============
+// (Optional) hotspot demo from your snippet
 document.addEventListener('click', (e) => {
   const spot = e.target.closest('.hotspot');
   if (!spot) return;
   const sel = spot.getAttribute('data-target');
   if (!sel) return;
-
   const target = document.querySelector(sel);
-  if (target) {
-    scrollToEl(target);
-  } else {
-    __pendingScrollSel = sel; // wait until loadProducts finishes
-  }
+  if (!target) { console.warn('Hotspot target not found:', sel); return; }
+  target.scrollIntoView({ block: 'center' });
+  target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
 });
-
