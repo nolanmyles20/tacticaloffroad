@@ -172,3 +172,51 @@ h1, h2{
 .nav-toggle[aria-expanded="true"] .bar:nth-child(3){
   transform: translateY(-8px) rotate(-45deg);
 }
+/* --- PERFECT CENTERED X --- */
+.nav-toggle{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;        /* stack when closed */
+  gap:6px;                      /* space between bars (closed) */
+  border:2px solid #000;
+  background:transparent;
+  border-radius:6px;
+  min-width:44px; min-height:44px;
+  position:relative;            /* anchor for absolute bars when open */
+}
+
+.nav-toggle .bar{
+  width:24px;
+  height:2px;
+  background:#000;
+  border-radius:1px;
+  transition:
+    transform .2s ease,
+    opacity .2s ease,
+    top .2s ease,
+    left .2s ease;
+  /* closed: normal flow */
+  position:relative;
+}
+
+/* When open, put both visible bars exactly in the center, then rotate */
+.nav-toggle[aria-expanded="true"]{
+  gap:0;                        /* remove spacing so nothing offsets the X */
+}
+.nav-toggle[aria-expanded="true"] .bar{
+  position:absolute;            /* overlap at the same point */
+  left:50%;
+  top:50%;
+  transform-origin:center;
+}
+
+.nav-toggle[aria-expanded="true"] .bar:nth-child(1){
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.nav-toggle[aria-expanded="true"] .bar:nth-child(2){
+  opacity:0;                    /* hide middle */
+}
+.nav-toggle[aria-expanded="true"] .bar:nth-child(3){
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
