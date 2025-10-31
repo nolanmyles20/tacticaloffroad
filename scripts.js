@@ -25,7 +25,7 @@ function bumpShadow(q) {
   setShadowQty(getShadowQty() + Math.max(1, Number(q) || 1));
 }
 
-// ============== ADDED: LOCAL CART (source of truth) ==============
+// ============== LOCAL CART (source of truth) ==============
 const LS_CART_KEY = 'headless_cart_v1';
 
 function readCart() {
@@ -52,7 +52,6 @@ function addToLocalCart({ variantId, qty = 1, title, image, price_cents = 0, pro
   const line = c.lines.find(l => l.variantId === key);
   if (line) {
     line.qty = Math.max(1, (line.qty|0) + (qty|0));
-    // Optional: update title/image/price if changed
     line.title = title ?? line.title;
     line.image = image ?? line.image;
     line.price_cents = (price_cents ?? line.price_cents) | 0;
@@ -159,7 +158,7 @@ async function getCountFromStorefront() {
 
 // Choose the best count we can show
 async function refreshBadge() {
-  const localQty = cartCount();                // ADDED: prefer local cart
+  const localQty = cartCount();                // prefer local cart
   const shadow   = getShadowQty();             // kept for back-compat
   const [sfQty, jsQty] = await Promise.all([getCountFromStorefront(), getCountFromCartJs()]);
   const qty = Math.max(localQty, shadow, sfQty, jsQty);
@@ -221,7 +220,7 @@ function addTwoSequentially(v1, q1, v2, q2) {
   setTimeout(() => addLineGET(v2, q2), 500);
 }
 
-// ============== ADDED: CART PAGE RENDER + CHECKOUT ==============
+// ============== CART PAGE RENDER + CHECKOUT (optional page) ==============
 function renderCart() {
   const root = document.getElementById('cart-root');
   if (!root) return; // not on cart page
@@ -338,10 +337,9 @@ function scrollToEl(el) {
 document.addEventListener('DOMContentLoaded', async () => {
   try { await ensureCart(); } catch {}
 
-  // Cart links (Site header): if you want to use your custom cart page,
-  // change the markup href to /cart.html and remove the handler below.
+  // Cart links (Site header): current behavior keeps named Shopify cart tab.
+  // If you want your own cart page instead, set href="/cart.html" in HTML.
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
-    // Keep your existing behavior (named Shopify cart tab)
     el.setAttribute('href', CART);
     el.setAttribute('target', CART_NAME);
     el.removeAttribute('rel');
@@ -366,18 +364,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggle.addEventListener('click', () => {
       menu.classList.contains('is-open') ? closeMobileMenu(toggle, menu) : openMobileMenu(toggle, menu);
     });
-    menu.addEventListener('click', (e) => { if (e.target.closest('a')) closeMobileMenu(toggle, menu); });
+
+    menu.addEventListener('click', (e) => {
+      if (e.target.closest('a')) closeMobileMenu(toggle, menu);
+    });
+
     document.addEventListener('click', (e) => {
       if (!menu.classList.contains('is-open')) return;
       const inMenu = e.target.closest('#main-menu');
       const onTgl  = e.target.closest('.nav-toggle');
       if (!inMenu && !onTgl) closeMobileMenu(toggle, menu);
     });
+
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && menu.classList.contains('is-open')) closeMobileMenu(toggle, menu);
     });
-    const mq = window.matchMedia('(min-width: 801px)`);
-    mq.addEventListener?.('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
+
+    // FIXED: removed stray backtick and added legacy fallback
+    const mq = window.matchMedia('(min-width: 801px)');
+    if (mq.addEventListener) {
+      mq.addEventListener('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
+    } else if (mq.addListener) {
+      mq.addListener((m) => { if (m.matches) closeMobileMenu(toggle, menu); });
+    }
   }
 
   // Badge lifecycle — prefer local cart immediately, then refresh fallback sources
@@ -511,7 +520,7 @@ function wireCards(items) {
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
         if (!variantId) { if (DEBUG) console.warn('[cart] missing variantId'); return; }
 
-        // ADDED: Local cart add (keep Shopify helpers intact but unused here)
+        // Local cart add
         const priceCents = Math.round((product.basePrice || 0) * 100);
         addToLocalCart({
           variantId, qty: q,
@@ -567,7 +576,7 @@ function wireCards(items) {
 
       if (!variantId) { if (DEBUG) console.warn('[cart] no variantId resolved'); return; }
 
-      // ADDED: Local cart add (keep Shopify helpers intact but unused here)
+      // Local cart add
       const priceCents = Math.round((product.basePrice || 0) * 100);
       addToLocalCart({
         variantId, qty: q,
