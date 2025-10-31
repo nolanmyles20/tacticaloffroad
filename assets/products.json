@@ -145,14 +145,24 @@
   {
     "id": "jeep-visor",
     "title": "NM CUSTOMS JEEP VISOR",
-    "desc": "VISOR",
+    "desc": "LOW-PROFILE SUN VISOR FOR JEEP PLATFORMS.",
     "basePrice": 79,
-    "platforms": ["JEEP"],
-    "tags": ["VISOR", "BLACK"],
+    "platforms": ["Jeep"],
+    "tags": ["Armor", "Stainless"],
     "image": "assets/visor.PNG",
-    "option_labels": { "first": "FINISH", "second": "MATERIAL" },
-    "variant_ids": {"RAW": {"ALUMINUM":  {  "47466418438299" },"STAINLESS": {  "47466418569371" }}, "BLACK POWDERCOAT": { "47466418503835" },"STAINLESS": { "47466418634907" }}
-  },
+    "option_labels": { "first": "Finish", "second": "Material" },
+    "variant_ids": {
+      "RAW": {
+        "ALUMINUM": 47466418438299,
+        "STAINLESS": 47466418569371
+      },
+      "BLACK POWDERCOAT": {
+        "ALUMINUM": 47466418503835,
+        "STAINLESS": 47466418634907
+      }
+    }
+  }
+
   {
     "id": "crosskart-chassis",
     "title": "CROSS-KART CHASSIS KIT",
