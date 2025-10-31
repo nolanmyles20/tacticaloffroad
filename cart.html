@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TACTICAL OFFROAD — CART</title>
+  <link rel="icon" type="image/png" href="assets/favicon_white.png">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="scripts.js"></script>
+</head>
+
+<body>
+  <nav class="nav">
+    <!-- Logo -->
+    <a href="/" class="logo-link" aria-label="TACTICAL OFFROAD — Home">
+      <img src="assets/logo.svg" alt="" class="logo">
+    </a>
+
+    <span class="nav-title">TACTICAL OFFROAD</span>
+
+    <!-- Mobile toggle -->
+    <button class="nav-toggle" aria-expanded="false" aria-controls="main-menu" aria-label="Toggle menu">
+      <span class="bar" aria-hidden="true"></span>
+      <span class="bar" aria-hidden="true"></span>
+      <span class="bar" aria-hidden="true"></span>
+      <span class="sr-only">Menu</span>
+    </button>
+
+    <!-- Desktop links -->
+    <div class="links" role="navigation" aria-label="Primary">
+      <a class="tab nav-tab" href="/">HOME</a>
+      <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
+      <a class="tab nav-tab" href="/jeep.html">JEEP</a>
+      <a class="tab nav-tab" href="/ar15.html">AR-15</a>
+      <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
+      <a class="tab nav-tab" href="/contact.html">CONTACT</a>
+    </div>
+
+    <!-- Cart -->
+    <a id="cart-link" class="nav-cart" href="/cart.html" aria-label="Open cart">
+      <img src="assets/cart-icon.svg" class="cart-icon" alt="">
+      CART <span id="cart-count" class="cart-count">0</span>
+    </a>
+  </nav>
+
+  <!-- Mobile menu -->
+  <div id="main-menu" class="menu" role="navigation" aria-label="Mobile">
+    <a class="tab nav-tab" href="/">HOME</a>
+    <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
+    <a class="tab nav-tab" href="/jeep.html">JEEP</a>
+    <a class="tab nav-tab" href="/ar15.html">AR-15</a>
+    <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
+    <a class="tab nav-tab" href="/contact.html">CONTACT</a>
+  </div>
+
+  <main class="container">
+    <div class="product-header"><h1>Your Cart</h1></div>
+    <div id="cart-root"></div>
+  </main>
+
+  <footer class="footer">
+    © 2025 TACTICAL OFFROAD — HUMVEE • JEEP • AR-15 • CROSS-KARTS
+  </footer>
+</body>
+</html>
