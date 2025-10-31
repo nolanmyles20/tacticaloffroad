@@ -176,14 +176,17 @@ async function getCountFromStorefront() {
 }
 
 // Choose the best count we can show
+// Choose the best count we can show (no cross-origin cart.js)
 async function refreshBadge() {
-  const localQty = cartCount();                // prefer local cart
-  const shadow   = getShadowQty();             // kept for back-compat
-  const [sfQty, jsQty] = await Promise.all([getCountFromStorefront(), getCountFromCartJs()]);
-  const qty = Math.max(localQty, shadow, sfQty, jsQty);
-  if (DEBUG) console.log('[badge]', { localQty, shadow, sfQty, jsQty, chosen: qty });
+  const localQty = cartCount();                // local cart is our truth
+  let sfQty = 0;
+  try { sfQty = await getCountFromStorefront(); } catch {}
+  const shadow = getShadowQty();               // legacy fallback, harmless
+  const qty = Math.max(localQty, shadow, sfQty);
+  if (DEBUG) console.log('[badge]', { localQty, shadow, sfQty, chosen: qty });
   setBadge(qty);
 }
+
 
 // ================= ONE NAMED CART TAB, ALWAYS =================
 // Robust focus/open for mobile/desktop
