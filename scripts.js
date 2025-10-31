@@ -6,7 +6,7 @@ const CART_JS    = `https://${SHOPIFY.shop}/cart.js`;
 const CART_ADD   = `https://${SHOPIFY.shop}/cart/add`;
 const CART_NAME  = 'SHOPIFY_CART';
 
-// Storefront (badge reliability + session mirror)
+// Storefront (badge reliability + session mirror/fallback)
 const SF_ENDPOINT = `https://${SHOPIFY.shop}/api/2025-01/graphql.json`;
 const SF_TOKEN    = '7f1d57625124831f8f9c47a088e48fb8'; // Storefront Access Token
 
@@ -14,17 +14,6 @@ const DEBUG = false;
 
 // Pending scroll target if hotspot clicked before products render
 let __pendingScrollSel = null;
-
-// Shadow counter so badge updates instantly even if cookies are blocked
-function getShadowQty() {
-  return Number(localStorage.getItem('shadowCartQty') || 0) || 0;
-}
-function setShadowQty(n) {
-  localStorage.setItem('shadowCartQty', String(Math.max(0, n|0)));
-}
-function bumpShadow(q) {
-  setShadowQty(getShadowQty() + Math.max(1, Number(q) || 1));
-}
 
 // ============== LOCAL CART (source of truth) ==============
 const LS_CART_KEY = 'headless_cart_v1';
@@ -123,7 +112,7 @@ async function getCountFromCartJs() {
   } catch { return 0; }
 }
 
-// ---- Storefront helpers ----
+// ---- Storefront helpers (fallback for badge) ----
 async function sfFetch(query, variables = {}) {
   const r = await fetch(SF_ENDPOINT, {
     method: 'POST',
@@ -139,7 +128,6 @@ async function sfFetch(query, variables = {}) {
   if (j.errors) { if (DEBUG) console.warn('SF errors', j.errors); throw j.errors; }
   return j.data;
 }
-
 async function ensureCart() {
   let id = localStorage.getItem('sf_cartId');
   if (id) return id;
@@ -148,11 +136,10 @@ async function ensureCart() {
   if (id) localStorage.setItem('sf_cartId', id);
   return id;
 }
-
 function variantNumericToGid(numericId) {
   return `gid://shopify/ProductVariant/${String(numericId)}`;
 }
-
+// kept for compatibility (not used by local add flow)
 async function sfAddLine(variantId, qty) {
   try {
     const cartId = await ensureCart();
@@ -166,7 +153,6 @@ async function sfAddLine(variantId, qty) {
     if (DEBUG) console.warn('sfAddLine failed', e);
   }
 }
-
 async function getCountFromStorefront() {
   try {
     const id = await ensureCart();
@@ -176,17 +162,20 @@ async function getCountFromStorefront() {
   } catch { return 0; }
 }
 
-// Choose the best count we can show
+// Local-first badge; fall back to Storefront/cart.js ONLY when local cart is empty.
+// Also listen to cross-tab changes so the badge stays in sync.
 async function refreshBadge() {
-  const localQty = cartCount();                // prefer local cart
-  const shadow   = getShadowQty();             // kept for back-compat
+  const localQty = cartCount();
+  if (localQty > 0) { setBadge(localQty); return; }
   const [sfQty, jsQty] = await Promise.all([getCountFromStorefront(), getCountFromCartJs()]);
-  const qty = Math.max(localQty, shadow, sfQty, jsQty);
-  if (DEBUG) console.log('[badge]', { localQty, shadow, sfQty, jsQty, chosen: qty });
+  const qty = Math.max(sfQty, jsQty, 0);
   setBadge(qty);
 }
+window.addEventListener('storage', (ev) => {
+  if (ev.key === LS_CART_KEY) setBadgeFromLocal();
+});
 
-// ================= ONE NAMED CART TAB, ALWAYS =================
+// ================= ONE NAMED CART TAB (legacy helpers kept) =================
 function focusCartTab() {
   let w = null;
   try { w = window.open('', CART_NAME); } catch {}
@@ -207,13 +196,11 @@ function primeCartTab() {
   focusCartTab();
   openInCartTab(CART);
 }
-
-// Add to Online Store cart AND mirror to Storefront (legacy helper; not used by local adds)
+// kept for compatibility
 function addLineGET(variantId, qty) {
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
   sfAddLine(id, q);
-  bumpShadow(q);
   focusCartTab();
   const url = `${CART_ADD}?id=${encodeURIComponent(id)}&quantity=${q}&return_to=%2Fcart&_=${Date.now()}`;
   openInCartTab(url);
@@ -226,7 +213,7 @@ function addTwoSequentially(v1, q1, v2, q2) {
   setTimeout(() => addLineGET(v2, q2), 500);
 }
 
-// ============== CART PAGE RENDER + CHECKOUT (optional page) ==============
+// ============== CART PAGE RENDER + CHECKOUT (our cart UI) ==============
 function renderCart() {
   const root = document.getElementById('cart-root');
   if (!root) return;
@@ -337,6 +324,9 @@ function scrollToEl(el) {
 document.addEventListener('DOMContentLoaded', async () => {
   try { await ensureCart(); } catch {}
 
+  // One-time cleanup: remove legacy shadow counter so badge can't get stuck
+  try { localStorage.removeItem('shadowCartQty'); } catch {}
+
   // Header cart links → go to OUR cart page (local cart UI)
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
     el.setAttribute('href', '/cart.html');
@@ -366,6 +356,7 @@ async function loadProducts() {
   if (!res.ok) { console.error('products.json fetch failed:', res.status, res.statusText); return; }
   const items = await res.json();
 
+  // Category pages
   document.querySelectorAll('#product-grid').forEach(grid => {
     const cat = grid.getAttribute('data-category');
     const activeTags = getActiveTags();
@@ -375,6 +366,7 @@ async function loadProducts() {
     grid.innerHTML = subset.map(p => productCard(p)).join('') || '<p>No products match those filters.</p>';
   });
 
+  // Featured (home)
   const fg = document.getElementById('featured-grid');
   if (fg) {
     const platforms = ['Humvee', 'Jeep', 'AR-15', 'Cross-Karts'];
@@ -384,6 +376,7 @@ async function loadProducts() {
 
   wireCards(items);
 
+  // Finish any pending scroll (e.g., Humvee/Jeep insert hotspot)
   if (__pendingScrollSel) {
     const el = document.querySelector(__pendingScrollSel);
     if (el) scrollToEl(el);
@@ -395,12 +388,12 @@ async function loadProducts() {
 function productCard(p) {
   if (p.simple) {
     return `
-    <div class="card" data-id="\${p.id}" id="product-\${p.id}">
-      <img src="\${p.image}" alt="\${p.title}">
+    <div class="card" data-id="${p.id}" id="product-${p.id}">
+      <img src="${p.image}" alt="${p.title}">
       <div class="content">
-        <div class="badge">\${p.platforms.join(' • ')}</div>
-        <h3>\${p.title}</h3>
-        <p>\${p.desc}</p>
+        <div class="badge">${p.platforms.join(' • ')}</div>
+        <h3>${p.title}</h3>
+        <p>${p.desc}</p>
         <div class="controls">
           <div>
             <label>Variant</label>
@@ -426,31 +419,31 @@ function productCard(p) {
                ? Object.keys(vmap[o1][o2]) : [];
 
   return `
-  <div class="card" data-id="\${p.id}" id="product-\${p.id}">
-    <img src="\${p.image}" alt="\${p.title}">
+  <div class="card" data-id="${p.id}" id="product-${p.id}">
+    <img src="${p.image}" alt="${p.title}">
     <div class="content">
-      <div class="badge">\${p.platforms.join(' • ')}</div>
-      <h3>\${p.title}</h3>
-      <p>\${p.desc}</p>
-      <p class="price">$\\\${p.basePrice}</p>
+      <div class="badge">${p.platforms.join(' • ')}</div>
+      <h3>${p.title}</h3>
+      <p>${p.desc}</p>
+      <p class="price">$${p.basePrice}</p>
       <div class="controls">
-        <div \${opt1.length<=1 ? 'style="display:none"' : ''}>
-          <label>\${labels.first || 'Option 1'}</label>
-          <select class="select opt1">\${opt1.map(v=>`<option value="\${v}">\${v}</option>`).join('')}</select>
+        <div ${opt1.length<=1 ? 'style="display:none"' : ''}>
+          <label>${labels.first || 'Option 1'}</label>
+          <select class="select opt1">${opt1.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
         </div>
-        <div \${opt2.length<=1 ? 'style="display:none"' : ''}>
-          <label>\${labels.second || 'Option 2'}</label>
-          <select class="select opt2">\${opt2.map(v=>`<option value="\${v}">\${v}</option>`).join('')}</select>
+        <div ${opt2.length<=1 ? 'style="display:none"' : ''}>
+          <label>${labels.second || 'Option 2'}</label>
+          <select class="select opt2">${opt2.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
         </div>
-        <div \${opt3.length<=1 ? 'style="display:none"' : ''}>
-          <label>\${labels.third || 'Option 3'}</label>
-          <select class="select opt3">\${opt3.map(v=>`<option value="\${v}">\${v}</option>`).join('')}</select>
+        <div ${opt3.length<=1 ? 'style="display:none"' : ''}>
+          <label>${labels.third || 'Option 3'}</label>
+          <select class="select opt3">${opt3.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
         </div>
         <div>
           <label>Qty</label>
           <input type="number" class="qty" min="1" value="1"/>
         </div>
-        <label class="checkbox" \${p.powdercoat_variant_id ? '' : 'style="display:none"'}><input type="checkbox" class="powder"/> Powdercoat Black +$\\\${p.powdercoat_price || 50}</label>
+        <label class="checkbox" ${p.powdercoat_variant_id ? '' : 'style="display:none"'}><input type="checkbox" class="powder"/> Powdercoat Black +$${p.powdercoat_price || 50}</label>
       </div>
       <button class="btn add">ADD TO CART</button>
     </div>
@@ -578,24 +571,24 @@ function updateUrlFromFilters() {
   history.replaceState({}, '', newUrl);
 }
 
-// ================= HOTSPOTS (Humvee + Jeep + generic) =================
-// Works for .hotspot, .humvee-hotspot, .jeep-hotspot, or any element with data-target.
-// Also supports <a href="#product-..."> fallback.
+// ================= HOTSPOTS (Humvee + Jeep) =================
+// Guarded so clicks inside header/menu never get hijacked by hotspots.
 document.addEventListener('click', (e) => {
+  // 🚫 Ignore clicks originating in header/nav/menu
+  if (e.target.closest('.nav, #main-menu')) return;
+
   const node = e.target.closest('[data-target], .hotspot, .humvee-hotspot, .jeep-hotspot');
   if (!node) return;
 
-  // Prefer explicit data-target
   let sel = node.getAttribute('data-target') || node.dataset?.target || null;
 
-  // Fallback: anchors with href="#..."
+  // Allow anchors with hash to act as hotspots (outside nav)
   if (!sel && node.tagName === 'A') {
     const href = node.getAttribute('href') || '';
     if (href.startsWith('#')) sel = href;
   }
   if (!sel) return;
 
-  // Prevent native jump if it's an anchor
   if (node.tagName === 'A') e.preventDefault();
 
   const target = document.querySelector(sel);
@@ -603,7 +596,6 @@ document.addEventListener('click', (e) => {
     scrollToEl(target);
     target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
   } else {
-    // Save for after async product render
-    window.__pendingScrollSel = sel;
+    __pendingScrollSel = sel; // wait until loadProducts finishes
   }
 });
