@@ -1,3 +1,4 @@
+
 // ================= CONFIG =================
 const SHOPIFY    = { shop: 'tacticaloffroad.myshopify.com' };
 const CART       = `https://${SHOPIFY.shop}/cart`;
@@ -5,107 +6,17 @@ const CART_JS    = `https://${SHOPIFY.shop}/cart.js`;
 const CART_ADD   = `https://${SHOPIFY.shop}/cart/add`;
 const CART_NAME  = 'SHOPIFY_CART';
 
-// Storefront (badge reliability + session mirror)
-const SF_ENDPOINT = `https://${SHOPIFY.shop}/api/2025-01/graphql.json`;
-const SF_TOKEN    = '7f1d57625124831f8f9c47a088e48fb8'; // Storefront Access Token
+// Storefront API (used only as a fallback for the badge when cookies block /cart.js)
+const SF_VERSION  = '2024-10';
+const SF_ENDPOINT = `https://${SHOPIFY.shop}/api/${SF_VERSION}/graphql.json`;
+const SF_TOKEN    = '7f1d57625124831f8f9c47a088e48fb8'; // your token
 
 const DEBUG = false;
-
-// Pending scroll target if hotspot clicked before products render
 let __pendingScrollSel = null;
 
-// Shadow counter so badge updates instantly even if cookies are blocked
-function getShadowQty() {
-  return Number(localStorage.getItem('shadowCartQty') || 0) || 0;
-}
-function setShadowQty(n) {
-  localStorage.setItem('shadowCartQty', String(Math.max(0, n|0)));
-}
-function bumpShadow(q) {
-  setShadowQty(getShadowQty() + Math.max(1, Number(q) || 1));
-}
-
-// ============== LOCAL CART (source of truth) ==============
-const LS_CART_KEY = 'headless_cart_v1';
-
-function readCart() {
-  try { return JSON.parse(localStorage.getItem(LS_CART_KEY)) || { lines: [] }; }
-  catch { return { lines: [] }; }
-}
-function writeCart(cart) {
-  localStorage.setItem(LS_CART_KEY, JSON.stringify(cart));
-}
-function cartCount() {
-  const c = readCart();
-  return c.lines.reduce((n, l) => n + (l.qty|0), 0);
-}
-function cartSubtotalCents() {
-  const c = readCart();
-  return c.lines.reduce((sum, l) => sum + (l.price_cents || 0) * (l.qty|0), 0);
-}
-function setBadgeFromLocal() {
-  setBadge(cartCount());
-}
-function addToLocalCart({ variantId, qty = 1, title, image, price_cents = 0, productId }) {
-  const c = readCart();
-  const key = String(variantId);
-  const line = c.lines.find(l => l.variantId === key);
-  if (line) {
-    line.qty = Math.max(1, (line.qty|0) + (qty|0));
-    line.title = title ?? line.title;
-    line.image = image ?? line.image;
-    line.price_cents = (price_cents ?? line.price_cents) | 0;
-    line.productId = productId ?? line.productId;
-  } else {
-    c.lines.push({ variantId: key, qty: Math.max(1, qty|0), title, image, price_cents, productId });
-  }
-  writeCart(c);
-  setBadgeFromLocal();
-  return c;
-}
-function setLineQty(variantId, qty) {
-  const c = readCart();
-  const line = c.lines.find(l => l.variantId === String(variantId));
-  if (!line) return c;
-  if (qty <= 0) c.lines = c.lines.filter(l => l !== line);
-  else line.qty = qty|0;
-  writeCart(c);
-  setBadgeFromLocal();
-  return c;
-}
-function removeLine(variantId) {
-  const c = readCart();
-  c.lines = c.lines.filter(l => l.variantId !== String(variantId));
-  writeCart(c);
-  setBadgeFromLocal();
-  return c;
-}
-function clearLocalCart() {
-  writeCart({ lines: [] });
-  setBadgeFromLocal();
-}
-function formatMoney(cents) {
-  return `$${(Number(cents||0)/100).toFixed(2)}`;
-}
-
-// ============== TOAST (Item Added ✓) ==============
-let __toastTimer = null;
-
-function ensureToastHost() {
-  if (document.getElementById('toast-host')) return;
-  const host = document.createElement('div');
-  host.id = 'toast-host';
-  host.innerHTML = `<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>`;
-  document.body.appendChild(host);
-}
-function showToast(msg = 'Item Added To Cart ✓', ms = 1000) {
-  ensureToastHost();
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(__toastTimer);
-  __toastTimer = setTimeout(() => el.classList.remove('show'), ms);
-}
+// ================= LOG HELPERS =================
+const dbg  = (...a)=>{ if (DEBUG) console.log('[SF]', ...a); };
+const warn = (...a)=>{ if (DEBUG) console.warn('[SF]', ...a); };
 
 // ================= BADGE =================
 function setBadge(n) {
@@ -113,93 +24,113 @@ function setBadge(n) {
   if (el) el.textContent = String(n ?? 0);
 }
 
+// Prefer Online-Store cart.js when possible (truth for what /cart shows)
 async function getCountFromCartJs() {
   try {
     const r = await fetch(CART_JS, { credentials: 'include', cache: 'no-store', mode: 'cors' });
-    if (!r.ok) return 0;
+    if (!r.ok) return null; // null => not available
     const j = await r.json();
     return Number(j.item_count) || 0;
-  } catch { return 0; }
+  } catch {
+    return null;
+  }
 }
 
-// ---- Storefront helpers ----
+// =================== STOREFRONT CART (fallback) ===================
+const SF_CART_KEY = 'sf_cart_obj_v2'; // {version, token, id}
+
+function readSfCartObj() { try { return JSON.parse(localStorage.getItem(SF_CART_KEY)||'{}')||{}; } catch { return {}; } }
+function writeSfCartObj(o){ localStorage.setItem(SF_CART_KEY, JSON.stringify(o||{})); }
+function clearSfCartObj(){ localStorage.removeItem(SF_CART_KEY); }
+
+function cartSignatureChanged() {
+  const cur = readSfCartObj();
+  return (cur.version !== SF_VERSION || cur.token !== SF_TOKEN);
+}
+
 async function sfFetch(query, variables = {}) {
   const r = await fetch(SF_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       'X-Shopify-Storefront-Access-Token': SF_TOKEN
     },
     body: JSON.stringify({ query, variables }),
     cache: 'no-store',
     mode: 'cors'
   });
-  const j = await r.json();
-  if (j.errors) { if (DEBUG) console.warn('SF errors', j.errors); throw j.errors; }
-  return j.data;
+  let payload = null;
+  try { payload = await r.json(); } catch (e) { warn('bad JSON from SF', e); throw new Error(`SF ${r.status}`); }
+  if (!r.ok || payload.errors) { warn('SF error', { status:r.status, errors:payload?.errors }); throw new Error('Storefront API error'); }
+  return payload.data;
 }
 
-async function ensureCart() {
-  let id = localStorage.getItem('sf_cartId');
-  if (id) return id;
+async function ensureSfCart() {
+  if (cartSignatureChanged()) clearSfCartObj();
+  let cur = readSfCartObj();
+  if (cur.id) return cur.id;
   const data = await sfFetch(`mutation CreateCart { cartCreate { cart { id } } }`);
-  id = data?.cartCreate?.cart?.id || '';
-  if (id) localStorage.setItem('sf_cartId', id);
+  const id = data?.cartCreate?.cart?.id;
+  if (!id) throw new Error('Failed to create SF cart');
+  cur = { id, version: SF_VERSION, token: SF_TOKEN };
+  writeSfCartObj(cur);
+  dbg('created SF cart', id);
   return id;
 }
 
 function variantNumericToGid(numericId) {
-  return `gid://shopify/ProductVariant/${String(numericId)}`;
+  return `gid://shopify/ProductVariant/${String(numericId).trim()}`;
 }
 
-async function sfAddLine(variantId, qty) {
-  try {
-    const cartId = await ensureCart();
-    const merchandiseId = variantNumericToGid(variantId);
-    await sfFetch(`
-      mutation AddLines($cartId: ID!, $lines: [CartLineInput!]!) {
-        cartLinesAdd(cartId: $cartId, lines: $lines) { cart { totalQuantity } }
-      }
-    `, { cartId, lines: [{ merchandiseId, quantity: Math.max(1, Number(qty)||1) }] });
-  } catch (e) {
-    if (DEBUG) console.warn('sfAddLine failed', e);
-  }
+async function sfAddLine(numericVariantId, qty) {
+  const cartId = await ensureSfCart();
+  const merchandiseId = variantNumericToGid(numericVariantId);
+  const data = await sfFetch(`
+    mutation AddLines($cartId: ID!, $lines: [CartLineInput!]!) {
+      cartLinesAdd(cartId: $cartId, lines: $lines) { cart { totalQuantity } }
+    }`,
+    { cartId, lines: [{ merchandiseId, quantity: Math.max(1, Number(qty)||1) }] }
+  );
+  return Number(data?.cartLinesAdd?.cart?.totalQuantity || 0);
 }
 
 async function getCountFromStorefront() {
   try {
-    const id = await ensureCart();
-    if (!id) return 0;
+    const id = await ensureSfCart();
     const data = await sfFetch(`query GetCart($id: ID!) { cart(id: $id) { totalQuantity } }`, { id });
     return Number(data?.cart?.totalQuantity || 0);
-  } catch { return 0; }
+  } catch (e) { warn('getCountFromStorefront failed', e); return 0; }
 }
 
-// Choose the best count we can show
-// Choose the best count we can show (no cross-origin cart.js)
+// Hard reset the Storefront fallback if Online-Store cart is empty
+async function resetSfIfJsZero(jsQty) {
+  if (jsQty === 0) {
+    clearSfCartObj();
+    try { await ensureSfCart(); } catch (e) { /* ignore */ }
+  }
+}
+
+// Main badge logic: trust Online-Store when available; fallback to SF
 async function refreshBadge() {
-  const localQty = cartCount();                // local cart is our truth
-  let sfQty = 0;
-  try { sfQty = await getCountFromStorefront(); } catch {}
-  const shadow = getShadowQty();               // legacy fallback, harmless
-  const qty = Math.max(localQty, shadow, sfQty);
-  if (DEBUG) console.log('[badge]', { localQty, shadow, sfQty, chosen: qty });
-  setBadge(qty);
+  const jsQty = await getCountFromCartJs(); // number or null
+  if (jsQty !== null) {
+    // We have a real answer from Online-Store (cookie/session). TRUST IT.
+    setBadge(jsQty);
+    // If Online-Store says empty, kill the SF shadow so it can't show 16 later.
+    await resetSfIfJsZero(jsQty);
+    dbg('badge via cart.js', jsQty);
+    return;
+  }
+  // If cart.js is unavailable (blocked cookies), fall back to Storefront
+  const sfQty = await getCountFromStorefront();
+  setBadge(sfQty);
+  dbg('badge via Storefront fallback', sfQty);
 }
 
-
-// ================= ONE NAMED CART TAB, ALWAYS =================
-// Robust focus/open for mobile/desktop
-function focusCartTab() {
-  // Try to grab the existing named tab and focus it
-  let w = null;
-  try { w = window.open('', CART_NAME); } catch {}
-  try { if (w) w.focus(); } catch {}
-  return w;
-}
-
+// ================= ONE NAMED CART TAB (desktop + mobile) =================
 function openInCartTab(url) {
-  // Use an <a target="SHOPIFY_CART"> click to guarantee "reuse by name"
+  // <a target="SHOPIFY_CART"> guarantees reusing the same named tab/window
   const a = document.createElement('a');
   a.href = url;
   a.target = CART_NAME;
@@ -210,120 +141,33 @@ function openInCartTab(url) {
   a.remove();
 }
 
-function primeCartTab() {
-  // Focus if it exists; still send a navigation so iOS brings it forward
-  focusCartTab();
-  openInCartTab(CART);
-}
+function showCart() { openInCartTab(CART); }
 
-// Add to Online Store cart AND mirror to Storefront (for badge); always reuse named tab
-// (Kept for compatibility; not used by new local-cart add handlers.)
-function addLineGET(variantId, qty) {
+// Add to Online-Store cart (so /cart shows items) AND mirror to Storefront (for badge)
+async function addLine(variantId, qty) {
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
 
-  // Mirror to Storefront (for badge consistency)
-  sfAddLine(id, q);
-  bumpShadow(q); // update shadow immediately
+  // Mirror to SF first (so badge works when cookies are blocked)
+  try { await sfAddLine(id, q); } catch (e) { warn('sfAddLine failed', e); }
 
-  // Bring the existing cart tab to front if present, then navigate it to /cart/add
-  focusCartTab();
+  // Navigate the single named tab to /cart/add, then to /cart via return_to
   const url = `${CART_ADD}?id=${encodeURIComponent(id)}&quantity=${q}&return_to=%2Fcart&_=${Date.now()}`;
   openInCartTab(url);
 
-  // Update badge soon after
+  // Refresh badge soon (both sources)
   setTimeout(refreshBadge, 900);
-  setTimeout(refreshBadge, 2500);
-  setTimeout(refreshBadge, 5000);
+  setTimeout(refreshBadge, 3000);
+  setTimeout(refreshBadge, 6000);
 }
 
-function addTwoSequentially(v1, q1, v2, q2) {
-  addLineGET(v1, q1);
-  setTimeout(() => addLineGET(v2, q2), 500);
+async function addTwo(v1,q1,v2,q2) {
+  try { await sfAddLine(v1,q1); await sfAddLine(v2,q2); } catch(e){ warn('sfAddLine pair', e); }
+  addLine(v1,q1);
+  setTimeout(()=>addLine(v2,q2), 450);
 }
 
-// ============== CART PAGE RENDER + CHECKOUT (optional page) ==============
-function renderCart() {
-  const root = document.getElementById('cart-root');
-  if (!root) return; // not on cart page
-
-  const c = readCart();
-  if (!c.lines.length) {
-    root.innerHTML = `<p>Your cart is empty.</p>`;
-    return;
-  }
-
-  const rows = c.lines.map(l => `
-    <div class="cart-row" data-vid="${l.variantId}">
-      <img class="cart-thumb" src="${l.image || 'assets/placeholder.png'}" alt="">
-      <div class="cart-info">
-        <div class="cart-title">${l.title || 'Item'}</div>
-        <div class="cart-variant">Variant ID: ${l.variantId}</div>
-      </div>
-      <div class="cart-qty">
-        <button class="qty-btn minus" aria-label="Decrease">−</button>
-        <input class="qty-input" type="number" min="1" value="${l.qty}">
-        <button class="qty-btn plus" aria-label="Increase">+</button>
-      </div>
-      <div class="cart-price">${formatMoney((l.price_cents||0)*(l.qty||1))}</div>
-      <button class="cart-remove" aria-label="Remove">✕</button>
-    </div>
-  `).join('');
-
-  const subtotal = cartSubtotalCents();
-  root.innerHTML = `
-    <div class="cart-table">${rows}</div>
-    <div class="cart-summary">
-      <div class="row"><span>Subtotal</span><span>${formatMoney(subtotal)}</span></div>
-      <p class="muted">Taxes and shipping calculated at checkout.</p>
-      <div class="cart-actions">
-        <button id="cart-clear" class="btn outline">Clear Cart</button>
-        <button id="cart-checkout" class="btn primary">Checkout with Shopify</button>
-      </div>
-    </div>
-  `;
-
-  // Wire qty +/- and remove
-  root.querySelectorAll('.cart-row').forEach(row => {
-    const vid = row.getAttribute('data-vid');
-    const input = row.querySelector('.qty-input');
-    row.querySelector('.qty-btn.minus').addEventListener('click', () => {
-      const n = Math.max(1, (parseInt(input.value,10)||1) - 1);
-      input.value = n; setLineQty(vid, n); renderCart();
-    });
-    row.querySelector('.qty-btn.plus').addEventListener('click', () => {
-      const n = Math.max(1, (parseInt(input.value,10)||1) + 1);
-      input.value = n; setLineQty(vid, n); renderCart();
-    });
-    input.addEventListener('change', () => {
-      const n = Math.max(1, parseInt(input.value,10)||1);
-      setLineQty(vid, n); renderCart();
-    });
-    row.querySelector('.cart-remove').addEventListener('click', () => {
-      removeLine(vid); renderCart();
-    });
-  });
-
-  root.querySelector('#cart-clear').addEventListener('click', () => { clearLocalCart(); renderCart(); });
-  root.querySelector('#cart-checkout').addEventListener('click', () => { sendToShopifyAndCheckout(); });
-}
-
-function sendToShopifyAndCheckout() {
-  const c = readCart();
-  if (!c.lines.length) return;
-
-  // Build /cart permalink with numeric variant IDs
-  const parts = c.lines.map(l => `${encodeURIComponent(l.variantId)}:${encodeURIComponent(l.qty)}`).join(',');
-  const url = `https://${SHOPIFY.shop}/cart/${parts}`;
-
-  // Open Shopify cart and then push to checkout
-  focusCartTab();
-  openInCartTab(url);
-  setTimeout(() => openInCartTab(`https://${SHOPIFY.shop}/checkout`), 800);
-  // Do NOT clear local cart here; keep for safety/return flow.
-}
-
-// ================= MOBILE NAV & SCROLL =================
+// ================= MOBILE NAV & SMART SCROLL =================
 function setNavHeightVar() {
   const nav = document.querySelector('.nav');
   if (!nav) return;
@@ -343,7 +187,6 @@ function closeMobileMenu(toggle, menu) {
   toggle.setAttribute('aria-expanded', 'false');
   document.body.classList.remove('no-scroll');
 }
-
 function scrollToEl(el) {
   if (!el) return;
   const navHVar = getComputedStyle(document.documentElement).getPropertyValue('--nav-h').trim();
@@ -356,14 +199,17 @@ function scrollToEl(el) {
 
 // ================= BOOT =================
 document.addEventListener('DOMContentLoaded', async () => {
-  try { await ensureCart(); } catch {}
-
-  // Cart links (Site header): OPEN OUR CART PAGE (so it uses local cart)
+  // Cart links → always reuse the SAME tab
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
-    el.setAttribute('href', '/cart.html');
-    el.removeAttribute('target');
+    el.setAttribute('href', CART);
+    el.setAttribute('target', CART_NAME);
     el.removeAttribute('rel');
-    // IMPORTANT: no preventDefault — let the anchor navigate to /cart.html
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      showCart();
+      setTimeout(refreshBadge, 1000);
+      setTimeout(refreshBadge, 3000);
+    });
   });
 
   // Mobile menu toggle
@@ -378,33 +224,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggle.addEventListener('click', () => {
       menu.classList.contains('is-open') ? closeMobileMenu(toggle, menu) : openMobileMenu(toggle, menu);
     });
-
-    menu.addEventListener('click', (e) => {
-      if (e.target.closest('a')) closeMobileMenu(toggle, menu);
-    });
-
+    menu.addEventListener('click', (e) => { if (e.target.closest('a')) closeMobileMenu(toggle, menu); });
     document.addEventListener('click', (e) => {
       if (!menu.classList.contains('is-open')) return;
       const inMenu = e.target.closest('#main-menu');
       const onTgl  = e.target.closest('.nav-toggle');
       if (!inMenu && !onTgl) closeMobileMenu(toggle, menu);
     });
-
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && menu.classList.contains('is-open')) closeMobileMenu(toggle, menu);
     });
-
-    // Fixed: correct matchMedia string + fallback
     const mq = window.matchMedia('(min-width: 801px)');
-    if (mq.addEventListener) {
-      mq.addEventListener('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
-    } else if (mq.addListener) {
-      mq.addListener((m) => { if (m.matches) closeMobileMenu(toggle, menu); });
-    }
+    mq.addEventListener?.('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
   }
 
-  // Prefer local-badge immediately, then refresh other sources in background
-  setBadgeFromLocal();
+  // Make sure we have an SF cart (for fallback), but do not display its count unless needed
+  try { await ensureSfCart(); } catch(e){ warn('ensureSfCart failed', e); }
+
+  // Seed & keep badge in sync (now reconciles to 0 when Online-Store is empty)
   await refreshBadge();
   setInterval(refreshBadge, 15000);
   document.addEventListener('visibilitychange', () => {
@@ -413,10 +250,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Filters + products
   try { initFilters(); } catch (e) { if (DEBUG) console.warn('initFilters error', e); }
-  loadProducts().catch(err => console.error('loadProducts failed:', err));
-
-  // If we're on cart.html, render it now
-  renderCart();
+  loadProducts().catch(err => console.error('loadProducts failed', err));
 });
 
 // ================= DATA LOAD =================
@@ -425,7 +259,7 @@ async function loadProducts() {
   if (!res.ok) { console.error('products.json fetch failed:', res.status, res.statusText); return; }
   const items = await res.json();
 
-  // Category pages
+  // Category grids
   document.querySelectorAll('#product-grid').forEach(grid => {
     const cat = grid.getAttribute('data-category');
     const activeTags = getActiveTags();
@@ -445,7 +279,7 @@ async function loadProducts() {
 
   wireCards(items);
 
-  // Finish any pending scroll (e.g., Humvee insert hotspot)
+  // Finish any pending hotspot scroll
   if (__pendingScrollSel) {
     const el = document.querySelector(__pendingScrollSel);
     if (el) scrollToEl(el);
@@ -533,30 +367,16 @@ function wireCards(items) {
         const q = Math.max(1, parseInt(qty?.value, 10) || 1);
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
         if (!variantId) { if (DEBUG) console.warn('[cart] missing variantId'); return; }
-
-        // Local cart add
-        const priceCents = Math.round((product.basePrice || 0) * 100);
-        addToLocalCart({
-          variantId, qty: q,
-          title: product.title, image: product.image,
-          price_cents: priceCents, productId: product.id
-        });
-
         if (coat && coat.checked && product.powdercoat_variant_id) {
-          addToLocalCart({
-            variantId: product.powdercoat_variant_id, qty: 1,
-            title: 'Powdercoat Black', image: product.image,
-            price_cents: Math.round((product.powdercoat_price || 50) * 100),
-            productId: product.id
-          });
+          addTwo(variantId, q, product.powdercoat_variant_id, 1);
+        } else {
+          addLine(variantId, q);
         }
-
-        showToast('Item Added To Cart ✓');
       });
       return;
     }
 
-    const vmap = product.variant_ids || {};
+    const vmap  = product.variant_ids || {};
     const o1Sel = card.querySelector('.opt1');
     const o2Sel = card.querySelector('.opt2');
     const o3Sel = card.querySelector('.opt3');
@@ -591,25 +411,11 @@ function wireCards(items) {
       else variantId = vmap[o1]?.[o2] || null;                       // 2-level
 
       if (!variantId) { if (DEBUG) console.warn('[cart] no variantId resolved'); return; }
-
-      // Local cart add
-      const priceCents = Math.round((product.basePrice || 0) * 100);
-      addToLocalCart({
-        variantId, qty: q,
-        title: product.title, image: product.image,
-        price_cents: priceCents, productId: product.id
-      });
-
       if (coat && coat.checked && product.powdercoat_variant_id) {
-        addToLocalCart({
-          variantId: product.powdercoat_variant_id, qty: 1,
-          title: 'Powdercoat Black', image: product.image,
-          price_cents: Math.round((product.powdercoat_price || 50) * 100),
-          productId: product.id
-        });
+        addTwo(variantId, q, product.powdercoat_variant_id, 1);
+      } else {
+        addLine(variantId, q);
       }
-
-      showToast('Item Added To Cart ✓');
     });
   });
 }
@@ -648,12 +454,13 @@ document.addEventListener('click', (e) => {
   if (!spot) return;
   const sel = spot.getAttribute('data-target');
   if (!sel) return;
+
   const target = document.querySelector(sel);
   if (target) {
     scrollToEl(target);
     target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
   } else {
-    // remember to scroll once products render
-    __pendingScrollSel = sel;
+    __pendingScrollSel = sel; // wait until loadProducts finishes
   }
 });
+
