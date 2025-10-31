@@ -148,7 +148,7 @@
     "desc": "VISOR",
     "basePrice": 79,
     "platforms": ["JEEP"],
-    "tags": ["VISOR", "BLACK""],
+    "tags": ["VISOR", "BLACK"],
     "image": "assets/visor.PNG",
     "option_labels": { "first": "FINISH", "second": "MATERIAL" },
     "variant_ids": {
