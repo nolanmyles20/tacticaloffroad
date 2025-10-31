@@ -1,11 +1,11 @@
-
 // ================= CONFIG =================
 const SHOPIFY    = { shop: 'tacticaloffroad.myshopify.com' };
 const CART_CLEAR = `https://${SHOPIFY.shop}/cart/clear`;
 const CART_ADD   = `https://${SHOPIFY.shop}/cart/add`;
 const CART_NAME  = 'SHOPIFY_CART';
 
-const SITE_CART  = (typeof window !== 'undefined' ? `${location.origin}/cart` : '/cart');
+// If your cart page is /cart.html, keep .html:
+const SITE_CART  = (typeof window !== 'undefined' ? `${location.origin}/cart.html` : '/cart.html');
 const DEBUG = false;
 
 // ================= LOCAL CART (source of truth for badge/UI) =================
@@ -58,6 +58,24 @@ function getLocalCount() {
   return loadSiteCart().reduce((sum, l) => sum + (l.qty|0), 0);
 }
 
+// ================= TOAST (Added feedback) =================
+let __toastTimer = null;
+function ensureToastHost() {
+  if (document.getElementById('toast-host')) return;
+  const host = document.createElement('div');
+  host.id = 'toast-host';
+  host.innerHTML = `<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>`;
+  document.body.appendChild(host);
+}
+function showToast(msg = 'Item Added To Cart ✓', ms = 1000) {
+  ensureToastHost();
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(__toastTimer);
+  __toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
 // ================= BADGE (local = always correct) =================
 function setBadge(n) {
   const el = document.getElementById('cart-count');
@@ -90,22 +108,13 @@ function showSiteCartTab() {
 }
 
 // ================= CHECKOUT TRANSFER (Local → Shopify, then to checkout) =================
-// 1) Open named tab to /cart/clear (Shopify).
-// 2) Post one form to /cart/add with items[n][id], items[n][quantity] and return_to=/checkout.
-// 3) Clear local cart if desired AFTER form submit.
 async function transferLocalCartToShopifyAndCheckout() {
   const lines = loadSiteCart();
-  if (!lines.length) {
-    // no items; just show your cart
-    showSiteCartTab();
-    return;
-  }
+  if (!lines.length) { showSiteCartTab(); return; }
 
-  // Step 1: clear Shopify cart in the same named tab
   focusCartTab();
   openInCartTab(CART_CLEAR);
 
-  // Step 2: build a single add form with all lines
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = CART_ADD;
@@ -128,28 +137,21 @@ async function transferLocalCartToShopifyAndCheckout() {
   const returnTo = document.createElement('input');
   returnTo.type = 'hidden';
   returnTo.name = 'return_to';
-  returnTo.value = '/checkout';     // jump straight to checkout after add
+  returnTo.value = '/checkout';
   form.appendChild(returnTo);
 
   document.body.appendChild(form);
-
-  // Tiny delay gives the /cart/clear nav a tick to land in named tab
   setTimeout(() => {
-    form.submit();       // navigates named tab to add → then to checkout
+    form.submit();       // adds then redirects that tab to /checkout
     form.remove();
-    // Optional: clear local cart immediately; or wait and clear when user returns
-    clearSiteCart();
+    clearSiteCart();     // local is now mirrored to Shopify
   }, 250);
 }
 
-// ================= OPTIONAL CART PAGE RENDERER (your /cart page) =================
-// If your /cart page has:
-//   <div id="cart-root"></div>
-//   <button id="checkout-btn">Checkout</button>
-// We'll render items and wire the button.
+// ================= OPTIONAL CART PAGE RENDERER =================
 function renderSiteCartUI() {
   const root = document.getElementById('cart-root');
-  if (!root) return; // not on cart page
+  if (!root) return;
 
   const lines = loadSiteCart();
   if (!lines.length) {
@@ -157,7 +159,6 @@ function renderSiteCartUI() {
     return;
   }
 
-  // Simple list; you can style with your CSS
   root.innerHTML = `
     <div class="cart-lines">
       ${lines.map(l => `
@@ -176,7 +177,6 @@ function renderSiteCartUI() {
     </div>
   `;
 
-  // Wire qty +/- and remove
   root.querySelectorAll('.cart-line').forEach(row => {
     const id = row.getAttribute('data-id');
     const inp = row.querySelector('.qty-input');
@@ -184,7 +184,7 @@ function renderSiteCartUI() {
       const next = Math.max(1, (parseInt(inp.value,10)||1) - 1);
       inp.value = String(next);
       setQtyInSiteCart(id, next);
-      renderSiteCartUI(); // re-render
+      renderSiteCartUI();
     });
     row.querySelector('.qty-inc')?.addEventListener('click', () => {
       const next = Math.max(1, (parseInt(inp.value,10)||1) + 1);
@@ -203,14 +203,13 @@ function renderSiteCartUI() {
     });
   });
 
-  // Wire checkout
   document.getElementById('checkout-btn')?.addEventListener('click', (e) => {
     e.preventDefault();
     transferLocalCartToShopifyAndCheckout();
   });
 }
 
-// ================= MOBILE NAV & SCROLL (unchanged) =================
+// ================= MOBILE NAV & SCROLL =================
 function setNavHeightVar() {
   const nav = document.querySelector('.nav');
   if (!nav) return;
@@ -242,7 +241,7 @@ function scrollToEl(el) {
 
 // ================= BOOT =================
 document.addEventListener('DOMContentLoaded', () => {
-  // Cart links → open your /cart in the single named tab
+  // Header cart buttons → open YOUR cart page in named tab
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
     el.setAttribute('href', SITE_CART);
     el.setAttribute('target', CART_NAME);
@@ -256,10 +255,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Badge from local
   updateBadgeFromLocal();
 
-  // Optional: on /cart page render UI
+  // If we’re on /cart.html, render it
   renderSiteCartUI();
 
-  // Mobile menu toggle
+  // Mobile menu toggle + responsive close
   const toggle = document.querySelector('.nav-toggle');
   const menu   = document.getElementById('main-menu');
 
@@ -287,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Filters + products
   try { initFilters(); } catch (e) { if (DEBUG) console.warn('initFilters error', e); }
-  loadProducts().catch(err => console.error('loadProducts failed', err));
+  loadProducts().catch(err => console.error('loadProducts failed:', err));
 });
 
 // ================= DATA LOAD (unchanged) =================
@@ -296,7 +295,6 @@ async function loadProducts() {
   if (!res.ok) { console.error('products.json fetch failed:', res.status, res.statusText); return; }
   const items = await res.json();
 
-  // Category pages
   document.querySelectorAll('#product-grid').forEach(grid => {
     const cat = grid.getAttribute('data-category');
     const activeTags = getActiveTags();
@@ -306,7 +304,6 @@ async function loadProducts() {
     grid.innerHTML = subset.map(p => productCard(p)).join('') || '<p>No products match those filters.</p>';
   });
 
-  // Featured (home)
   const fg = document.getElementById('featured-grid');
   if (fg) {
     const platforms = ['Humvee', 'Jeep', 'AR-15', 'Cross-Karts'];
@@ -383,7 +380,7 @@ function productCard(p) {
   </div>`;
 }
 
-// ================= WIRING (updated to add to LOCAL cart only) =================
+// ================= WIRING (adds to LOCAL cart + toast) =================
 function wireCards(items) {
   document.querySelectorAll('.card').forEach(card => {
     const product = items.find(x => x.id === card.dataset.id);
@@ -402,8 +399,7 @@ function wireCards(items) {
         } else {
           addToSiteCart(variantId, q);
         }
-        // Optionally show the cart tab after add:
-        showSiteCartTab();
+        showToast(); // feedback
       });
       return;
     }
@@ -439,7 +435,6 @@ function wireCards(items) {
       let variantId = null;
       if (typeof node === 'object') variantId = node?.[o3] || null;  // 3-level
       else variantId = vmap[o1]?.[o2] || null;                       // 2-level
-
       if (!variantId) return;
 
       if (coat && coat.checked && product.powdercoat_variant_id) {
@@ -447,8 +442,7 @@ function wireCards(items) {
       } else {
         addToSiteCart(variantId, q);
       }
-      // Optionally show the cart tab after add:
-      showSiteCartTab();
+      showToast(); // feedback
     });
   });
 }
@@ -492,7 +486,6 @@ document.addEventListener('click', (e) => {
     scrollToEl(target);
     target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
   } else {
-    // wait to scroll once products render
     window.__pendingScrollSel = sel;
   }
 });
