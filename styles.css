@@ -301,3 +301,8 @@ html { scroll-behavior:smooth; }
   transform: translate(-50%, -50%);
   cursor: pointer;
 }
+/* Jeep-only hotspot color */
+.jeep-hotspots .hotspot {
+  background: rgba(128,128,128,0.75); /* gray badge */
+  border-color: #888;
+}
