@@ -7,34 +7,38 @@
 </head>
 <body>
 <nav class="nav">
-  <a href="/" class="logo-link">
-    <img src="assets/logo.svg" alt="TACTICAL OFFROAD" class="logo">
-  </a>
+    <!-- Logo (shown on desktop, hidden on mobile via CSS) -->
+    <a href="/" class="logo-link" aria-label="TACTICAL OFFROAD — Home">
+      <img src="assets/logo.svg" alt="" class="logo">
+    </a>
 
-  <!-- DESKTOP links (shown on >=801px; hidden on mobile via CSS) -->
-  <div class="links">
-    <a class="tab nav-tab" href="/">HOME</a>
-    <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
-    <a class="tab nav-tab" href="/jeep.html">JEEP</a>
-    <a class="tab nav-tab" href="/ar15.html">AR-15</a>
-    <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
-    <a class="tab nav-tab" href="/contact.html">CONTACT</a>
-  </div>
+    <!-- Site Title (centered on mobile, left on desktop via CSS overrides) -->
+    <span class="nav-title">TACTICAL OFFROAD</span>
 
-  <!-- Mobile toggle (hidden on desktop via CSS) -->
-  <button class="nav-toggle" aria-expanded="false" aria-controls="main-menu">
-    <span class="bar"></span><span class="bar"></span><span class="bar"></span>
-    <span class="sr-only">Menu</span>
-  </button>
+    <!-- Mobile toggle (hidden on desktop via CSS) -->
+    <button class="nav-toggle" aria-expanded="false" aria-controls="main-menu" aria-label="Toggle menu">
+      <span class="bar" aria-hidden="true"></span>
+      <span class="bar" aria-hidden="true"></span>
+      <span class="bar" aria-hidden="true"></span>
+      <span class="sr-only">Menu</span>
+    </button>
 
-  <!-- Cart (always visible) -->
-  <a id="cart-link" class="nav-cart" data-cart-link target="SHOPIFY_CART">
-    <img src="assets/cart-icon.svg" class="cart-icon" alt="Cart">
-    CART <span id="cart-count" class="cart-count">0</span>
-  </a>
+    <!-- DESKTOP links (shown on ≥801px; hidden on mobile via CSS) -->
+    <div class="links" role="navigation" aria-label="Primary">
+      <a class="tab nav-tab" href="/">HOME</a>
+      <a class="tab nav-tab" href="/humvee.html">HUMVEE</a>
+      <a class="tab nav-tab" href="/jeep.html">JEEP</a>
+      <a class="tab nav-tab" href="/ar15.html">AR-15</a>
+      <a class="tab nav-tab" href="/crosskarts.html">CROSS-KARTS</a>
+      <a class="tab nav-tab" href="/contact.html">CONTACT</a>
+    </div>
 
-</nav>
-
+    <!-- Cart (always visible) -->
+    <a id="cart-link" class="nav-cart" data-cart-link target="SHOPIFY_CART" aria-label="Open cart">
+      <img src="assets/cart-icon.svg" class="cart-icon" alt="">
+      CART <span id="cart-count" class="cart-count">0</span>
+    </a>
+  </nav>
 <!-- MOBILE-only menu (hidden on desktop via CSS; toggled open with .is-open) -->
 <div id="main-menu" class="menu" hidden>
   <a class="tab nav-tab" href="/">HOME</a>
