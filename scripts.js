@@ -1,4 +1,3 @@
-
 // ================= CONFIG =================
 const SHOPIFY    = { shop: 'tacticaloffroad.myshopify.com' };
 const CART       = `https://${SHOPIFY.shop}/cart`;
@@ -24,6 +23,70 @@ function setShadowQty(n) {
 }
 function bumpShadow(q) {
   setShadowQty(getShadowQty() + Math.max(1, Number(q) || 1));
+}
+
+// ============== ADDED: LOCAL CART (source of truth) ==============
+const LS_CART_KEY = 'headless_cart_v1';
+
+function readCart() {
+  try { return JSON.parse(localStorage.getItem(LS_CART_KEY)) || { lines: [] }; }
+  catch { return { lines: [] }; }
+}
+function writeCart(cart) {
+  localStorage.setItem(LS_CART_KEY, JSON.stringify(cart));
+}
+function cartCount() {
+  const c = readCart();
+  return c.lines.reduce((n, l) => n + (l.qty|0), 0);
+}
+function cartSubtotalCents() {
+  const c = readCart();
+  return c.lines.reduce((sum, l) => sum + (l.price_cents || 0) * (l.qty|0), 0);
+}
+function setBadgeFromLocal() {
+  setBadge(cartCount());
+}
+function addToLocalCart({ variantId, qty = 1, title, image, price_cents = 0, productId }) {
+  const c = readCart();
+  const key = String(variantId);
+  const line = c.lines.find(l => l.variantId === key);
+  if (line) {
+    line.qty = Math.max(1, (line.qty|0) + (qty|0));
+    // Optional: update title/image/price if changed
+    line.title = title ?? line.title;
+    line.image = image ?? line.image;
+    line.price_cents = (price_cents ?? line.price_cents) | 0;
+    line.productId = productId ?? line.productId;
+  } else {
+    c.lines.push({ variantId: key, qty: Math.max(1, qty|0), title, image, price_cents, productId });
+  }
+  writeCart(c);
+  setBadgeFromLocal();
+  return c;
+}
+function setLineQty(variantId, qty) {
+  const c = readCart();
+  const line = c.lines.find(l => l.variantId === String(variantId));
+  if (!line) return c;
+  if (qty <= 0) c.lines = c.lines.filter(l => l !== line);
+  else line.qty = qty|0;
+  writeCart(c);
+  setBadgeFromLocal();
+  return c;
+}
+function removeLine(variantId) {
+  const c = readCart();
+  c.lines = c.lines.filter(l => l.variantId !== String(variantId));
+  writeCart(c);
+  setBadgeFromLocal();
+  return c;
+}
+function clearLocalCart() {
+  writeCart({ lines: [] });
+  setBadgeFromLocal();
+}
+function formatMoney(cents) {
+  return `$${(Number(cents||0)/100).toFixed(2)}`;
 }
 
 // ================= BADGE =================
@@ -96,10 +159,11 @@ async function getCountFromStorefront() {
 
 // Choose the best count we can show
 async function refreshBadge() {
-  const shadow = getShadowQty();
+  const localQty = cartCount();                // ADDED: prefer local cart
+  const shadow   = getShadowQty();             // kept for back-compat
   const [sfQty, jsQty] = await Promise.all([getCountFromStorefront(), getCountFromCartJs()]);
-  const qty = Math.max(shadow, sfQty, jsQty);
-  if (DEBUG) console.log('[badge]', { shadow, sfQty, jsQty, chosen: qty });
+  const qty = Math.max(localQty, shadow, sfQty, jsQty);
+  if (DEBUG) console.log('[badge]', { localQty, shadow, sfQty, jsQty, chosen: qty });
   setBadge(qty);
 }
 
@@ -132,6 +196,7 @@ function primeCartTab() {
 }
 
 // Add to Online Store cart AND mirror to Storefront (for badge); always reuse named tab
+// (Kept for compatibility; not used by new local-cart add handlers.)
 function addLineGET(variantId, qty) {
   const id = String(variantId);
   const q  = Math.max(1, Number(qty) || 1);
@@ -154,6 +219,88 @@ function addLineGET(variantId, qty) {
 function addTwoSequentially(v1, q1, v2, q2) {
   addLineGET(v1, q1);
   setTimeout(() => addLineGET(v2, q2), 500);
+}
+
+// ============== ADDED: CART PAGE RENDER + CHECKOUT ==============
+function renderCart() {
+  const root = document.getElementById('cart-root');
+  if (!root) return; // not on cart page
+
+  const c = readCart();
+  if (!c.lines.length) {
+    root.innerHTML = `<p>Your cart is empty.</p>`;
+    return;
+  }
+
+  const rows = c.lines.map(l => `
+    <div class="cart-row" data-vid="${l.variantId}">
+      <img class="cart-thumb" src="${l.image || 'assets/placeholder.png'}" alt="">
+      <div class="cart-info">
+        <div class="cart-title">${l.title || 'Item'}</div>
+        <div class="cart-variant">Variant ID: ${l.variantId}</div>
+      </div>
+      <div class="cart-qty">
+        <button class="qty-btn minus" aria-label="Decrease">−</button>
+        <input class="qty-input" type="number" min="1" value="${l.qty}">
+        <button class="qty-btn plus" aria-label="Increase">+</button>
+      </div>
+      <div class="cart-price">${formatMoney((l.price_cents||0)*(l.qty||1))}</div>
+      <button class="cart-remove" aria-label="Remove">✕</button>
+    </div>
+  `).join('');
+
+  const subtotal = cartSubtotalCents();
+  root.innerHTML = `
+    <div class="cart-table">${rows}</div>
+    <div class="cart-summary">
+      <div class="row"><span>Subtotal</span><span>${formatMoney(subtotal)}</span></div>
+      <p class="muted">Taxes and shipping calculated at checkout.</p>
+      <div class="cart-actions">
+        <button id="cart-clear" class="btn outline">Clear Cart</button>
+        <button id="cart-checkout" class="btn primary">Checkout with Shopify</button>
+      </div>
+    </div>
+  `;
+
+  // Wire qty +/- and remove
+  root.querySelectorAll('.cart-row').forEach(row => {
+    const vid = row.getAttribute('data-vid');
+    const input = row.querySelector('.qty-input');
+    row.querySelector('.qty-btn.minus').addEventListener('click', () => {
+      const n = Math.max(1, (parseInt(input.value,10)||1) - 1);
+      input.value = n; setLineQty(vid, n); renderCart();
+    });
+    row.querySelector('.qty-btn.plus').addEventListener('click', () => {
+      const n = Math.max(1, (parseInt(input.value,10)||1) + 1);
+      input.value = n; setLineQty(vid, n); renderCart();
+    });
+    input.addEventListener('change', () => {
+      const n = Math.max(1, parseInt(input.value,10)||1);
+      setLineQty(vid, n); renderCart();
+    });
+    row.querySelector('.cart-remove').addEventListener('click', () => {
+      removeLine(vid); renderCart();
+    });
+  });
+
+  root.querySelector('#cart-clear').addEventListener('click', () => { clearLocalCart(); renderCart(); });
+  root.querySelector('#cart-checkout').addEventListener('click', () => { sendToShopifyAndCheckout(); });
+}
+
+function sendToShopifyAndCheckout() {
+  const c = readCart();
+  if (!c.lines.length) return;
+
+  // Build /cart permalink with numeric variant IDs
+  const parts = c.lines.map(l => `${encodeURIComponent(l.variantId)}:${encodeURIComponent(l.qty)}`).join(',');
+  const url = `https://${SHOPIFY.shop}/cart/${parts}`;
+
+  // Open in named cart tab and proceed to checkout
+  focusCartTab();
+  openInCartTab(url);
+  setTimeout(() => openInCartTab(`https://${SHOPIFY.shop}/checkout`), 800);
+  // Optionally clear local cart AFTER sending:
+  // clearLocalCart(); renderCart();
 }
 
 // ================= MOBILE NAV & SCROLL =================
@@ -191,15 +338,17 @@ function scrollToEl(el) {
 document.addEventListener('DOMContentLoaded', async () => {
   try { await ensureCart(); } catch {}
 
-  // Cart links: focus+reuse the same named tab and navigate to /cart
+  // Cart links (Site header): if you want to use your custom cart page,
+  // change the markup href to /cart.html and remove the handler below.
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
+    // Keep your existing behavior (named Shopify cart tab)
     el.setAttribute('href', CART);
     el.setAttribute('target', CART_NAME);
     el.removeAttribute('rel');
     el.addEventListener('click', (e) => {
-      e.preventDefault();               // we’ll handle focus + nav
-      focusCartTab();                   // bring existing tab forward on mobile
-      openInCartTab(CART);              // ensure it navigates/refreshes
+      e.preventDefault();
+      focusCartTab();
+      openInCartTab(CART);
       setTimeout(refreshBadge, 1000);
       setTimeout(refreshBadge, 3000);
     });
@@ -227,13 +376,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && menu.classList.contains('is-open')) closeMobileMenu(toggle, menu);
     });
-    const mq = window.matchMedia('(min-width: 801px)');
+    const mq = window.matchMedia('(min-width: 801px)`);
     mq.addEventListener?.('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
   }
 
-  // Badge lifecycle
-  // Seed with shadow (so it isn't 0 on first paint), then refresh from real sources
-  setBadge(getShadowQty());
+  // Badge lifecycle — prefer local cart immediately, then refresh fallback sources
+  setBadgeFromLocal();
   await refreshBadge();
   setInterval(refreshBadge, 15000);
   document.addEventListener('visibilitychange', () => {
@@ -243,6 +391,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Filters + products
   try { initFilters(); } catch (e) { if (DEBUG) console.warn('initFilters error', e); }
   loadProducts().catch(err => console.error('loadProducts failed:', err));
+
+  // If we're on cart.html, render it now
+  renderCart();
 });
 
 // ================= DATA LOAD =================
@@ -359,14 +510,22 @@ function wireCards(items) {
         const q = Math.max(1, parseInt(qty?.value, 10) || 1);
         const variantId = (product.variant_ids?.Solo || {})[varSel?.value || 'Default'];
         if (!variantId) { if (DEBUG) console.warn('[cart] missing variantId'); return; }
-        primeCartTab();
+
+        // ADDED: Local cart add (keep Shopify helpers intact but unused here)
+        const priceCents = Math.round((product.basePrice || 0) * 100);
+        addToLocalCart({
+          variantId, qty: q,
+          title: product.title, image: product.image,
+          price_cents: priceCents, productId: product.id
+        });
+
         if (coat && coat.checked && product.powdercoat_variant_id) {
-          // Mirror shadow qty for both lines
-          bumpShadow(q + 1);
-          addTwoSequentially(variantId, q, product.powdercoat_variant_id, 1);
-        } else {
-          bumpShadow(q);
-          addLineGET(variantId, q);
+          addToLocalCart({
+            variantId: product.powdercoat_variant_id, qty: 1,
+            title: 'Powdercoat Black', image: product.image,
+            price_cents: Math.round((product.powdercoat_price || 50) * 100),
+            productId: product.id
+          });
         }
       });
       return;
@@ -407,13 +566,22 @@ function wireCards(items) {
       else variantId = vmap[o1]?.[o2] || null;                       // 2-level
 
       if (!variantId) { if (DEBUG) console.warn('[cart] no variantId resolved'); return; }
-      primeCartTab();
+
+      // ADDED: Local cart add (keep Shopify helpers intact but unused here)
+      const priceCents = Math.round((product.basePrice || 0) * 100);
+      addToLocalCart({
+        variantId, qty: q,
+        title: product.title, image: product.image,
+        price_cents: priceCents, productId: product.id
+      });
+
       if (coat && coat.checked && product.powdercoat_variant_id) {
-        bumpShadow(q + 1);
-        addTwoSequentially(variantId, q, product.powdercoat_variant_id, 1);
-      } else {
-        bumpShadow(q);
-        addLineGET(variantId, q);
+        addToLocalCart({
+          variantId: product.powdercoat_variant_id, qty: 1,
+          title: 'Powdercoat Black', image: product.image,
+          price_cents: Math.round((product.powdercoat_price || 50) * 100),
+          productId: product.id
+        });
       }
     });
   });
