@@ -395,12 +395,12 @@ async function loadProducts() {
 function productCard(p) {
   if (p.simple) {
     return `
-    <div class="card" data-id="${p.id}" id="product-${p.id}">
-      <img src="${p.image}" alt="${p.title}">
+    <div class="card" data-id="\${p.id}" id="product-\${p.id}">
+      <img src="\${p.image}" alt="\${p.title}">
       <div class="content">
-        <div class="badge">${p.platforms.join(' • ')}</div>
-        <h3>${p.title}</h3>
-        <p>${p.desc}</p>
+        <div class="badge">\${p.platforms.join(' • ')}</div>
+        <h3>\${p.title}</h3>
+        <p>\${p.desc}</p>
         <div class="controls">
           <div>
             <label>Variant</label>
@@ -426,31 +426,31 @@ function productCard(p) {
                ? Object.keys(vmap[o1][o2]) : [];
 
   return `
-  <div class="card" data-id="${p.id}" id="product-${p.id}">
-    <img src="${p.image}" alt="${p.title}">
+  <div class="card" data-id="\${p.id}" id="product-\${p.id}">
+    <img src="\${p.image}" alt="\${p.title}">
     <div class="content">
-      <div class="badge">${p.platforms.join(' • ')}</div>
-      <h3>${p.title}</h3>
-      <p>${p.desc}</p>
-      <p class="price">$${p.basePrice}</p>
+      <div class="badge">\${p.platforms.join(' • ')}</div>
+      <h3>\${p.title}</h3>
+      <p>\${p.desc}</p>
+      <p class="price">$\\\${p.basePrice}</p>
       <div class="controls">
-        <div ${opt1.length<=1 ? 'style="display:none"' : ''}>
-          <label>${labels.first || 'Option 1'}</label>
-          <select class="select opt1">${opt1.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
+        <div \${opt1.length<=1 ? 'style="display:none"' : ''}>
+          <label>\${labels.first || 'Option 1'}</label>
+          <select class="select opt1">\${opt1.map(v=>`<option value="\${v}">\${v}</option>`).join('')}</select>
         </div>
-        <div ${opt2.length<=1 ? 'style="display:none"' : ''}>
-          <label>${labels.second || 'Option 2'}</label>
-          <select class="select opt2">${opt2.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
+        <div \${opt2.length<=1 ? 'style="display:none"' : ''}>
+          <label>\${labels.second || 'Option 2'}</label>
+          <select class="select opt2">\${opt2.map(v=>`<option value="\${v}">\${v}</option>`).join('')}</select>
         </div>
-        <div ${opt3.length<=1 ? 'style="display:none"' : ''}>
-          <label>${labels.third || 'Option 3'}</label>
-          <select class="select opt3">${opt3.map(v=>`<option value="${v}">${v}</option>`).join('')}</select>
+        <div \${opt3.length<=1 ? 'style="display:none"' : ''}>
+          <label>\${labels.third || 'Option 3'}</label>
+          <select class="select opt3">\${opt3.map(v=>`<option value="\${v}">\${v}</option>`).join('')}</select>
         </div>
         <div>
           <label>Qty</label>
           <input type="number" class="qty" min="1" value="1"/>
         </div>
-        <label class="checkbox" ${p.powdercoat_variant_id ? '' : 'style="display:none"'}><input type="checkbox" class="powder"/> Powdercoat Black +$${p.powdercoat_price || 50}</label>
+        <label class="checkbox" \${p.powdercoat_variant_id ? '' : 'style="display:none"'}><input type="checkbox" class="powder"/> Powdercoat Black +$\\\${p.powdercoat_price || 50}</label>
       </div>
       <button class="btn add">ADD TO CART</button>
     </div>
@@ -578,17 +578,32 @@ function updateUrlFromFilters() {
   history.replaceState({}, '', newUrl);
 }
 
-// ================= HOTSPOTS =================
+// ================= HOTSPOTS (Humvee + Jeep + generic) =================
+// Works for .hotspot, .humvee-hotspot, .jeep-hotspot, or any element with data-target.
+// Also supports <a href="#product-..."> fallback.
 document.addEventListener('click', (e) => {
-  const spot = e.target.closest('.hotspot');
-  if (!spot) return;
-  const sel = spot.getAttribute('data-target');
+  const node = e.target.closest('[data-target], .hotspot, .humvee-hotspot, .jeep-hotspot');
+  if (!node) return;
+
+  // Prefer explicit data-target
+  let sel = node.getAttribute('data-target') || node.dataset?.target || null;
+
+  // Fallback: anchors with href="#..."
+  if (!sel && node.tagName === 'A') {
+    const href = node.getAttribute('href') || '';
+    if (href.startsWith('#')) sel = href;
+  }
   if (!sel) return;
+
+  // Prevent native jump if it's an anchor
+  if (node.tagName === 'A') e.preventDefault();
+
   const target = document.querySelector(sel);
   if (target) {
     scrollToEl(target);
     target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
   } else {
-    __pendingScrollSel = sel;
+    // Save for after async product render
+    window.__pendingScrollSel = sel;
   }
 });
