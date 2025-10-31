@@ -279,3 +279,6 @@ html { scroll-behavior:smooth; }
 
   #main-menu{ display: none !important; }
 }
+.hero-jeep { max-width: 1200px; margin: 1rem auto 2rem; }
+.hero-jeep .hotspot-wrap { position: relative; width: 100%; }
+.hero-jeep-img { width: 100%; height: auto; display: block; }
