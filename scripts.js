@@ -88,6 +88,25 @@ function formatMoney(cents) {
   return `$${(Number(cents||0)/100).toFixed(2)}`;
 }
 
+// ============== TOAST (Item Added ✓) ==============
+let __toastTimer = null;
+
+function ensureToastHost() {
+  if (document.getElementById('toast-host')) return;
+  const host = document.createElement('div');
+  host.id = 'toast-host';
+  host.innerHTML = `<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>`;
+  document.body.appendChild(host);
+}
+function showToast(msg = 'Item Added To Cart ✓', ms = 1000) {
+  ensureToastHost();
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(__toastTimer);
+  __toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
 // ================= BADGE =================
 function setBadge(n) {
   const el = document.getElementById('cart-count');
@@ -294,12 +313,11 @@ function sendToShopifyAndCheckout() {
   const parts = c.lines.map(l => `${encodeURIComponent(l.variantId)}:${encodeURIComponent(l.qty)}`).join(',');
   const url = `https://${SHOPIFY.shop}/cart/${parts}`;
 
-  // Open in named cart tab and proceed to checkout
+  // Open Shopify cart and then push to checkout
   focusCartTab();
   openInCartTab(url);
   setTimeout(() => openInCartTab(`https://${SHOPIFY.shop}/checkout`), 800);
-  // Optionally clear local cart AFTER sending:
-  // clearLocalCart(); renderCart();
+  // Do NOT clear local cart here; keep for safety/return flow.
 }
 
 // ================= MOBILE NAV & SCROLL =================
@@ -337,19 +355,12 @@ function scrollToEl(el) {
 document.addEventListener('DOMContentLoaded', async () => {
   try { await ensureCart(); } catch {}
 
-  // Cart links (Site header): current behavior keeps named Shopify cart tab.
-  // If you want your own cart page instead, set href="/cart.html" in HTML.
+  // Cart links (Site header): OPEN OUR CART PAGE (so it uses local cart)
   [...document.querySelectorAll('[data-cart-link], #cart-link')].forEach(el => {
-    el.setAttribute('href', CART);
-    el.setAttribute('target', CART_NAME);
+    el.setAttribute('href', '/cart.html');
+    el.removeAttribute('target');
     el.removeAttribute('rel');
-    el.addEventListener('click', (e) => {
-      e.preventDefault();
-      focusCartTab();
-      openInCartTab(CART);
-      setTimeout(refreshBadge, 1000);
-      setTimeout(refreshBadge, 3000);
-    });
+    // IMPORTANT: no preventDefault — let the anchor navigate to /cart.html
   });
 
   // Mobile menu toggle
@@ -380,7 +391,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (e.key === 'Escape' && menu.classList.contains('is-open')) closeMobileMenu(toggle, menu);
     });
 
-    // FIXED: removed stray backtick and added legacy fallback
+    // Fixed: correct matchMedia string + fallback
     const mq = window.matchMedia('(min-width: 801px)');
     if (mq.addEventListener) {
       mq.addEventListener('change', (m) => { if (m.matches) closeMobileMenu(toggle, menu); });
@@ -389,7 +400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Badge lifecycle — prefer local cart immediately, then refresh fallback sources
+  // Prefer local-badge immediately, then refresh other sources in background
   setBadgeFromLocal();
   await refreshBadge();
   setInterval(refreshBadge, 15000);
@@ -536,6 +547,8 @@ function wireCards(items) {
             productId: product.id
           });
         }
+
+        showToast('Item Added To Cart ✓');
       });
       return;
     }
@@ -592,6 +605,8 @@ function wireCards(items) {
           productId: product.id
         });
       }
+
+      showToast('Item Added To Cart ✓');
     });
   });
 }
