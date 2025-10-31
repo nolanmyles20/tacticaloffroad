@@ -5,7 +5,7 @@
     "desc": "HEAVY-DUTY FRONT BUMPER WITH D-RING TABS AND WINCH MOUNT.",
     "basePrice": 899,
     "platforms": ["Humvee", "Jeep"],
-    "tags": ["Armor", "Stainless"],
+    "tags": ["Bumper", "Armor"],
     "image": "assets/coming-soon-centered.png",
     "variant_ids": {
       "Armor": { "1mm": "VARIANT_ID_A_1", "2mm": "VARIANT_ID_A_2", "3mm": "VARIANT_ID_A_3" },
@@ -65,7 +65,7 @@
     "desc": "CLAYMORE",
     "basePrice": 79,
     "platforms": ["AR-15"],
-    "tags": ["Flash Suppressors", "Thread Adapters", "Crush Washers"],
+    "tags": ["Flash Suppressors"],
     "image": "assets/IMG_4494.jpeg",
     "option_labels": { "first": "Thread", "second": "Caliber" },
     "variant_ids": {
@@ -85,7 +85,7 @@
     "desc": "PREDATOR",
     "basePrice": 79,
     "platforms": ["AR-15"],
-    "tags": ["Flash Suppressors", "Thread Adapters", "Crush Washers"],
+    "tags": ["Flash Suppressors"],
     "image": "assets/IMG_4495.jpeg",
     "option_labels": { "first": "Thread", "second": "Caliber" },
     "variant_ids": {
