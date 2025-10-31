@@ -279,13 +279,25 @@ html { scroll-behavior:smooth; }
 
   #main-menu{ display: none !important; }
 }
-.hero-jeep { max-width: 1200px; margin: 1rem auto 2rem; }
-.hero-jeep .hotspot-wrap { position: relative; width: 100%; }
-.hero-jeep-img { width: 100%; height: auto; display: block; }
+/* Mirror Humvee behavior */
+.jeep-hotspots {
+  max-width: 1200px;
+  margin: 1rem auto 2rem;
+}
 
-.hotspot{
-  position:absolute; left:var(--x); top:var(--y); transform:translate(-50%,-50%);
-  padding:.35rem .55rem; background:rgba(0,0,0,.75); color:#e5e6e7;
-  border:1px solid #7d7f82; border-radius:6px; cursor:pointer; white-space:nowrap;
-  font:600 12px/1 'Black Ops One Local', sans-serif; letter-spacing:.5px;
+.jeep-hotspots .hotspot-container {
+  position: relative;
+  display: inline-block;
+}
+
+.jeep-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.jeep-hotspots .hotspot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
 }
