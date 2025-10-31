@@ -386,3 +386,50 @@ html { scroll-behavior:smooth; }
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+/* Prevent scroll when menu is open (our JS toggles this on <body>) */
+body.no-scroll { overflow: hidden; }
+
+/* Make sure the header sits above the slide-down menu */
+.nav { position: sticky; top: 0; z-index: 1001; }
+
+/* The hamburger sits above the menu overlay so it's always clickable */
+.nav-toggle { position: relative; z-index: 1002; }
+
+/* Mobile menu: hidden by default; shown when .is-open is added by JS */
+.menu {
+  position: fixed;
+  left: 0; right: 0;
+  top: var(--nav-h, 60px);
+  max-height: calc(100vh - var(--nav-h, 60px));
+  overflow-y: auto;
+  background: var(--invert-bg, #0b0b0b);
+  z-index: 1000;
+
+  /* hidden state */
+  transform: translateY(-120%);
+  opacity: 0;
+  visibility: hidden;
+  transition: transform .25s ease, opacity .25s ease, visibility .25s;
+}
+
+/* visible state (toggled by JS) */
+.menu.is-open {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Hide hamburger & mobile menu on desktop */
+@media (min-width: 801px) {
+  .nav-toggle { display: none; }
+  #main-menu.menu { display: none !important; }
+}
+
+/* (Optional) simple hamburger bars if you want them visible */
+.nav-toggle .bar {
+  display: block;
+  width: 28px; height: 3px;
+  margin: 5px 0;
+  background: currentColor;
+  border-radius: 2px;
+}
