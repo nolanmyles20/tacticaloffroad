@@ -24,7 +24,7 @@ a{color:inherit;text-decoration:none}
 
 /* ================= NAV ================= */
 .nav{
-  position:sticky; top:0; z-index:10;
+  position:sticky; top:0; z-index:1001; /* above menu overlay */
   display:grid; grid-template-columns:auto 1fr auto; /* logo/title | links | cart */
   align-items:center; gap:12px;
   padding:calc(12px + env(safe-area-inset-top,0)) 18px 12px 18px;
@@ -43,34 +43,39 @@ a{color:inherit;text-decoration:none}
 .cart-icon{width:20px; height:20px; display:inline-block; filter:brightness(0); transition:transform .2s;}
 .nav-cart:hover .cart-icon{transform:scale(1.1);}
 
-/* Tabs */
+/* Tabs (desktop look) */
 .tab{
   border:2px solid #000; padding:6px 14px; margin:0 4px; transition:.15s;
   clip-path:polygon(10% 0%,90% 0%,100% 10%,100% 90%,90% 100%,10% 100%,0% 90%,0% 10%);
 }
 .tab:hover{background:var(--invert-bg); color:var(--invert-fg);}
 
-/* ============ NAV TITLE (mobile centered, desktop left) ============ */
+/* NAV TITLE */
 .nav-title{
   font-weight:900; letter-spacing:2px; line-height:1;
   white-space:nowrap; color:#000;
 }
 
-/* ============ Hamburger ============ */
+/* ============ Hamburger (gray stacked lines) ============ */
 .nav-toggle{
   width:44px; height:44px; padding:0;
   display:none; /* shown by MQ on mobile */
-  align-items:center; justify-content:center; gap:6px;
+  align-items:center; justify-content:center;
   border:2px solid #000; border-radius:6px; background:transparent;
   position:relative;
+  color:#707070; /* sets bar color via currentColor; gray not blue */
 }
-.nav-toggle:focus{outline:2px solid #000; outline-offset:2px;}
+.nav-toggle:hover{ color:#4a4a4a; }
+.nav-toggle:focus{ outline:2px solid #000; outline-offset:2px; }
 .nav-toggle .bar{
-  width:24px; height:2px; background:#000; border-radius:1px;
+  display:block;
+  width:28px; height:3px;
+  margin:5px 0;
+  background:currentColor;  /* uses gray from .nav-toggle color */
+  border-radius:2px;
   transition:transform .18s ease, opacity .18s ease;
 }
-/* X animation */
-.nav-toggle[aria-expanded="true"]{ gap:0; }
+/* “X” animation */
 .nav-toggle[aria-expanded="true"] .bar{
   position:absolute; left:50%; top:50%; transform-origin:center center;
 }
@@ -78,7 +83,7 @@ a{color:inherit;text-decoration:none}
 .nav-toggle[aria-expanded="true"] .bar:nth-child(2){ opacity:0; transform:translate(-50%,-50%); }
 .nav-toggle[aria-expanded="true"] .bar:nth-child(3){ transform:translate(-50%,-50%) rotate(-45deg); }
 
-/* Robust visually-hidden class (prevents “Menu” text showing) */
+/* Visually-hidden helper */
 .sr-only{
   position:absolute !important;
   width:1px; height:1px; padding:0; margin:-1px;
@@ -86,15 +91,42 @@ a{color:inherit;text-decoration:none}
 }
 
 /* ============ Mobile menu (fixed overlay) ============ */
-#main-menu{
-  display:none; /* closed */
-  position:fixed; top:var(--nav-h); left:0; right:0; z-index:9;
-  background:#e1e2e4; border-bottom:1px solid var(--border);
-  max-height:calc(100vh - var(--nav-h)); overflow-y:auto;
-  padding:10px 18px 16px;
+.menu {
+  position: fixed;
+  left: 0; right: 0;
+  top: var(--nav-h, 60px);
+  max-height: calc(100vh - var(--nav-h, 60px));
+  overflow-y: auto;
+  background: #e1e2e4;
+  z-index: 1000; /* under .nav */
+
+  /* hidden state */
+  transform: translateY(-120%);
+  opacity: 0;
+  visibility: hidden;
+  transition: transform .25s ease, opacity .25s ease, visibility .25s;
 }
-#main-menu.is-open{ display:grid !important; grid-template-columns:1fr; }
-#main-menu .tab{ margin:0; width:100%; text-align:center; padding:12px 14px; }
+
+/* visible state (toggled by JS) */
+.menu.is-open {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Mobile menu links: full-width, NO BORDERS */
+.menu .tab{
+  margin:0;
+  width:100%;
+  text-align:center;
+  padding:14px 16px;
+  border:none !important;         /* ← hide borders on mobile menu buttons */
+  clip-path:none;                 /* remove bevel in the overlay */
+  background:transparent;
+}
+.menu .tab:hover{
+  background:#d6d7d9;            /* gentle hover on mobile items */
+}
 
 /* ===== Desktop vs Mobile visibility & layout ===== */
 @media (min-width:801px){
@@ -102,10 +134,27 @@ a{color:inherit;text-decoration:none}
   .nav-toggle{ display:none !important; }
   #main-menu{ display:none !important; }
 
-  /* desktop: logo visible, title left-aligned near logo */
+  /* desktop: logo visible, title centered row 1, tabs center row 2, cart right */
   .logo-link{ display:flex; }
-  .nav{ grid-template-columns:auto 1fr auto; }
-  .nav-title{ justify-self:start; text-align:left; margin-left:8px; }
+  .nav{
+    display:grid;
+    grid-template-rows: auto auto;
+    grid-template-columns: 1fr auto;
+    align-items:center;
+    row-gap:8px;
+  }
+  .nav-title{
+    grid-row:1; grid-column:1 / -1;
+    justify-self:center; text-align:center;
+    font-size: clamp(28px, 5vw, 56px);
+    letter-spacing: 0.14em;
+    max-width: 100%;
+    padding-inline: 8px;
+    white-space: nowrap;
+    margin: 0;
+  }
+  .links{ grid-row:2; grid-column:1; justify-self:center; gap:8px; }
+  .nav-cart{ grid-row:2; grid-column:2; justify-self:end; }
 }
 
 @media (max-width:800px){
@@ -124,18 +173,15 @@ a{color:inherit;text-decoration:none}
     padding: calc(12px + env(safe-area-inset-top,0)) 16px 12px 16px;
   }
 
-  /* ===== MOBILE TITLE FIT (only change) ===== */
+  /* Mobile title: big but safe, one line */
   .nav-title{
     grid-column: 1 / -1; grid-row: 1;
     justify-self: center; text-align: center; margin: 0;
-
-    /* Big but guaranteed to fit on one line for narrow phones */
     font-size: min(38px, 7.2vw);
     letter-spacing: clamp(0.03em, 0.9vw, 0.10em);
-
     white-space: nowrap;
     max-width: 100%;
-    padding-inline: 6px;   /* tiny breathing room so glyphs don’t clip */
+    padding-inline: 6px;
     box-sizing: border-box;
   }
 
@@ -164,12 +210,11 @@ a{color:inherit;text-decoration:none}
 
 /* ============ Background (single image, no tiling) ============ */
 body{
-  /* one image only, centered; no repeats */
   background-image: url("assets/diamond-plate.png");
   background-repeat: no-repeat;
   background-position: center top;
-  background-size: cover;         /* fills the viewport with a single image */
-  background-attachment: scroll;  /* avoid iOS quirks with fixed */
+  background-size: cover;
+  background-attachment: scroll;
   min-height: 100%;
 }
 
@@ -213,6 +258,39 @@ html { scroll-behavior:smooth; }
 }
 .card.flash, .product-card.flash{ animation:flash 1500ms ease; }
 
+/* ============ JEEP hotspots (gray) ============ */
+.jeep-hotspots {
+  max-width: 1200px;
+  margin: 1rem auto 2rem;
+}
+.jeep-hotspots .hotspot-container {
+  position: relative;
+  display: inline-block;
+}
+.jeep-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.jeep-hotspots .hotspot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+
+  /* Gray badge + white glow to match your ask */
+  width:clamp(20px,3.5vw,36px); height:clamp(20px,3.5vw,36px);
+  border-radius:50%;
+  background: rgba(128,128,128,0.75);
+  outline: 2px solid rgba(255,255,255,0.7);
+  box-shadow: 0 0 0 6px rgba(255,255,255,0.25);
+}
+.jeep-hotspots .hotspot:hover,
+.jeep-hotspots .hotspot:focus-visible{
+  background: rgba(110,110,110,0.9);
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow: 0 0 0 10px rgba(255,255,255,0.28);
+}
+
 /* ===== FULL-BLEED BLACK FOOTER ===== */
 .footer{
   width:100vw;
@@ -229,87 +307,7 @@ html { scroll-behavior:smooth; }
 .footer a{ color:#e0e0e0; text-decoration:none; }
 .footer a:hover{ color:#ffffff; }
 
-/* ===== DESKTOP: two-row header (title full-width, tabs center, cart right) ===== */
-@media (min-width:801px){
-  .nav{
-    display: grid;
-    grid-template-rows: auto auto;
-    grid-template-columns: 1fr auto;   /* row 2 columns: links | cart */
-    align-items: center;
-    row-gap: 8px;
-  }
-
-  /* Hide the logo on desktop as requested earlier */
-  .logo-link{ display: none !important; }
-
-  /* No hamburger on desktop */
-  .nav-toggle{ display: none !important; }
-
-  /* Row 1: centered title spanning full width */
-  .nav-title{
-    grid-row: 1;
-    grid-column: 1 / -1;
-    justify-self: center;
-    text-align: center;
-
-    /* big but safe */
-    font-size: clamp(28px, 5vw, 56px);
-    letter-spacing: 0.14em;
-    max-width: 100%;
-    padding-inline: 8px;
-    white-space: nowrap;
-    margin: 0;
-  }
-
-  /* Row 2: tabs centered */
-  .links{
-    grid-row: 2;
-    grid-column: 1;
-    display: flex !important;
-    justify-self: center;
-    gap: 8px;
-  }
-
-  /* Row 2: cart pinned right */
-  .nav-cart{
-    grid-row: 2;
-    grid-column: 2;
-    justify-self: end;
-  }
-
-  #main-menu{ display: none !important; }
-}
-/* Mirror Humvee behavior */
-.jeep-hotspots {
-  max-width: 1200px;
-  margin: 1rem auto 2rem;
-}
-
-.jeep-hotspots .hotspot-container {
-  position: relative;
-  display: inline-block;
-}
-
-.jeep-img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.jeep-hotspots .hotspot {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  cursor: pointer;
-}
-/* Jeep-only hotspot color */
-.jeep-hotspots .hotspot {
-  background: rgba(128,128,128,0.75); /* gray badge */
-  border-color: #888;
-}
-/* Jeep-only hotspot glow */
-.jeep-hotspots .hotspot.flash {
-  box-shadow: 0 0 0 10px rgba(255,255,255,0.45);
-}
+/* ============ Cart page styles ============ */
 .cart-table { display:grid; gap:12px; }
 .cart-row {
   display:grid;
@@ -360,7 +358,8 @@ html { scroll-behavior:smooth; }
   .cart-price { grid-column:3; }
   .cart-remove { grid-column:3; }
 }
-/* Toast */
+
+/* ============ Toast ============ */
 #toast-host {
   position: fixed;
   inset: 0;
@@ -386,50 +385,11 @@ html { scroll-behavior:smooth; }
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
-/* Prevent scroll when menu is open (our JS toggles this on <body>) */
+
+/* Prevent scroll when menu is open (toggled by JS on <body>) */
 body.no-scroll { overflow: hidden; }
 
-/* Make sure the header sits above the slide-down menu */
-.nav { position: sticky; top: 0; z-index: 1001; }
-
-/* The hamburger sits above the menu overlay so it's always clickable */
-.nav-toggle { position: relative; z-index: 1002; }
-
-/* Mobile menu: hidden by default; shown when .is-open is added by JS */
-.menu {
-  position: fixed;
-  left: 0; right: 0;
-  top: var(--nav-h, 60px);
-  max-height: calc(100vh - var(--nav-h, 60px));
-  overflow-y: auto;
-  background: var(--invert-bg, #0b0b0b);
-  z-index: 1000;
-
-  /* hidden state */
-  transform: translateY(-120%);
-  opacity: 0;
-  visibility: hidden;
-  transition: transform .25s ease, opacity .25s ease, visibility .25s;
-}
-
-/* visible state (toggled by JS) */
-.menu.is-open {
-  transform: translateY(0);
-  opacity: 1;
-  visibility: visible;
-}
-
-/* Hide hamburger & mobile menu on desktop */
+/* Safety: hide menu on desktop even if .is-open is stuck */
 @media (min-width: 801px) {
-  .nav-toggle { display: none; }
   #main-menu.menu { display: none !important; }
-}
-
-/* (Optional) simple hamburger bars if you want them visible */
-.nav-toggle .bar {
-  display: block;
-  width: 28px; height: 3px;
-  margin: 5px 0;
-  background: currentColor;
-  border-radius: 2px;
 }
